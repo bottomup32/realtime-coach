@@ -57,7 +57,8 @@ export default function Dashboard() {
 
     isProcessingRef.current = true;
 
-    const currentPrompt = useSettings.getState().customPrompt;
+    const currentPrompts = useSettings.getState().prompts;
+    const activeAgents = useSettings.getState().agents;
 
     try {
       const response = await fetch('/api/gemini', {
@@ -65,7 +66,8 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: textChunk,
-          systemInstruction: currentPrompt
+          prompts: currentPrompts,
+          activeAgents: activeAgents
         })
       });
 
