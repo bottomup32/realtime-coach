@@ -150,7 +150,7 @@ export default function Dashboard() {
       const connection = setupDeepgramConnection(deepgramClient);
 
       connection.on(LiveTranscriptionEvents.Open, () => {
-        connection.on(LiveTranscriptionEvents.Transcript, async (data) => {
+        connection.on(LiveTranscriptionEvents.Transcript, async (data: any) => {
           const sentence = data.channel.alternatives[0].transcript;
           if (sentence && data.is_final) {
             transcriptBufferRef.current += " " + sentence;
