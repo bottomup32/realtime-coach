@@ -13,7 +13,10 @@ export const setupDeepgramConnection = (client: any) => {
         model: "nova-2",
         language: "ko",
         smart_format: true,
+        interim_results: true,
+        punctuate: true,
         diarize: true,
+        endpointing: 300,
     });
     return connection;
 };
