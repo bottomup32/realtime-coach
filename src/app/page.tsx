@@ -59,7 +59,6 @@ export default function Dashboard() {
 
     const currentPrompts = useSettings.getState().prompts;
     const activeAgents = useSettings.getState().agents;
-    const contextRef = useRef<string>(""); // Store rolling summary
 
     try {
       const response = await fetch('/api/gemini', {
