@@ -27,7 +27,7 @@ export default function Dashboard() {
 
   /* Refs */
   const deepgramRef = useRef<LiveClient | null>(null);
-  const connectionRef = useRef<any>(null); // Keep connection instance
+  const deepgramConnectionRef = useRef<any>(null); // Keep connection instance
   const transcriptBufferRef = useRef<string>(""); // For accumulation
   const isProcessingRef = useRef<boolean>(false); // Lock for AI calls
   const sessionIdRef = useRef<string | null>(null); // Current Session ID
