@@ -14,6 +14,7 @@ import { LiveConnectionState, LiveTranscriptionEvents } from '@deepgram/sdk';
 import { useSettings } from '@/lib/store/settings';
 import { createClient } from '@/lib/supabase';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
   const [isRecording, setIsRecording] = useState(false);
