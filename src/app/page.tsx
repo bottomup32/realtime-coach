@@ -26,6 +26,7 @@ export default function Dashboard() {
   const supabase = createClient();
 
   /* Refs */
+  const audioCaptureRef = useRef<AudioCapture | null>(null); // Restored
   const deepgramRef = useRef<LiveClient | null>(null);
   const deepgramConnectionRef = useRef<any>(null); // Keep connection instance
   const transcriptBufferRef = useRef<string>(""); // For accumulation
