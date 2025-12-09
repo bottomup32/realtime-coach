@@ -24,32 +24,15 @@ export default function Dashboard() {
   const { agents, interventionInterval } = useSettings();
   const supabase = createClient();
 
-  const audioCaptureRef = useRef<AudioCapture | null>(null);
-  const deepgramConnectionRef = useRef<any>(null);
-  const transcriptBufferRef = useRef<string>("");
-  const sessionIdRef = useRef<string | null>(null);
+  /* Refs */
+  const deepgramRef = useRef<LiveClient | null>(null);
+  const connectionRef = useRef<any>(null); // Keep connection instance
+  const transcriptBufferRef = useRef<string>(""); // For accumulation
+  const isProcessingRef = useRef<boolean>(false); // Lock for AI calls
+  const sessionIdRef = useRef<string | null>(null); // Current Session ID
+  const contextRef = useRef<string>(""); // Rolling context for Orchestrator
 
-  // Auto-login
-  useEffect(() => {
-    const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.log("Signing in anonymously...");
-        const { error } = await supabase.auth.signInAnonymously();
-        if (error) console.error("Auth Error:", error);
-      } else {
-        console.log("User already signed in:", session.user.id);
-      }
-    };
-    initAuth();
-
-    audioCaptureRef.current = new AudioCapture();
-    return () => {
-      audioCaptureRef.current?.stop();
-    };
-  }, []);
-
-  const isProcessingRef = useRef(false);
+  const { toast } = useToast();
 
   const processWithGemini = async (textChunk: string) => {
     if (isProcessingRef.current) return;
