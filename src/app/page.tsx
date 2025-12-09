@@ -59,6 +59,7 @@ export default function Dashboard() {
 
     const currentPrompts = useSettings.getState().prompts;
     const activeAgents = useSettings.getState().agents;
+    const contextRef = useRef<string>(""); // Store rolling summary
 
     try {
       const response = await fetch('/api/gemini', {
@@ -67,7 +68,8 @@ export default function Dashboard() {
         body: JSON.stringify({
           text: textChunk,
           prompts: currentPrompts,
-          activeAgents: activeAgents
+          activeAgents: activeAgents,
+          previousContext: contextRef.current
         })
       });
 
@@ -76,6 +78,12 @@ export default function Dashboard() {
       if (!response.ok) {
         console.error("Gemini API Error Response:", data);
         return;
+      }
+
+      // Update rolling context
+      if (data.updatedContext) {
+        contextRef.current = data.updatedContext;
+        console.log("Orchestrator Context:", data.updatedContext);
       }
 
       if (data.needsIntervention && data.type !== 'NONE') {

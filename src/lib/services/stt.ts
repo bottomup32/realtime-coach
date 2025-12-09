@@ -16,7 +16,8 @@ export const setupDeepgramConnection = (client: any) => {
         interim_results: true,
         punctuate: true,
         diarize: true,
-        endpointing: 300,
+        endpointing: 500, // Increased endpointing latency
+        utterance_end_ms: 1000, // Wait 1s silence before finalizing (reduces fragmentation)
     });
     return connection;
 };
