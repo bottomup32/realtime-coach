@@ -10,7 +10,7 @@ import { SettingsDialog } from '@/components/dashboard/SettingsDialog';
 import { ConnectionStatus } from '@/components/dashboard/ConnectionStatus';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, History } from 'lucide-react';
-import { LiveConnectionState, LiveTranscriptionEvents } from '@deepgram/sdk';
+import { LiveConnectionState, LiveTranscriptionEvents, LiveClient } from '@deepgram/sdk';
 import { useSettings } from '@/lib/store/settings';
 import { createClient } from '@/lib/supabase';
 import Link from 'next/link';
@@ -35,6 +35,26 @@ export default function Dashboard() {
   const contextRef = useRef<string>(""); // Rolling context for Orchestrator
 
   const { toast } = useToast();
+
+  // Auto-login & Audio Init
+  useEffect(() => {
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("Signing in anonymously...");
+        const { error } = await supabase.auth.signInAnonymously();
+        if (error) console.error("Auth Error:", error);
+      } else {
+        console.log("User already signed in:", session.user.id);
+      }
+    };
+    initAuth();
+
+    audioCaptureRef.current = new AudioCapture();
+    return () => {
+      audioCaptureRef.current?.stop();
+    };
+  }, []);
 
   const processWithGemini = async (textChunk: string) => {
     if (isProcessingRef.current) return;
