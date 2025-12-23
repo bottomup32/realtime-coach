@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AudioCapture } from '@/lib/audio/capture';
 import { getDeepgramClient, setupDeepgramConnection } from '@/lib/services/stt';
+import { createGeminiLiveSession, GeminiLiveSession } from '@/lib/services/gemini-live';
 import { LiveTranscript } from '@/components/dashboard/LiveTranscript';
 import { AgentFeedback } from '@/components/dashboard/AgentFeedback';
 import { SettingsDialog } from '@/components/dashboard/SettingsDialog';
@@ -22,17 +23,18 @@ export default function Dashboard() {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'transcript' | 'insights'>('transcript');
 
-  const { agents, interventionInterval } = useSettings();
+  const { agents, interventionInterval, sttProvider } = useSettings();
   const supabase = createClient();
 
   /* Refs */
-  const audioCaptureRef = useRef<AudioCapture | null>(null); // Restored
+  const audioCaptureRef = useRef<AudioCapture | null>(null);
   const deepgramRef = useRef<LiveClient | null>(null);
-  const deepgramConnectionRef = useRef<any>(null); // Keep connection instance
-  const transcriptBufferRef = useRef<string>(""); // For accumulation
-  const isProcessingRef = useRef<boolean>(false); // Lock for AI calls
-  const sessionIdRef = useRef<string | null>(null); // Current Session ID
-  const contextRef = useRef<string>(""); // Rolling context for Orchestrator
+  const deepgramConnectionRef = useRef<any>(null);
+  const geminiSessionRef = useRef<GeminiLiveSession | null>(null);
+  const transcriptBufferRef = useRef<string>("");
+  const isProcessingRef = useRef<boolean>(false);
+  const sessionIdRef = useRef<string | null>(null);
+  const contextRef = useRef<string>("");
 
   const { toast } = useToast();
 
@@ -42,10 +44,19 @@ export default function Dashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         console.log("Signing in anonymously...");
-        const { error } = await supabase.auth.signInAnonymously();
-        if (error) console.error("Auth Error:", error);
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) {
+          console.error("Auth Error:", error);
+        } else if (data.user) {
+          // Set user ID for DB prompt sync
+          useSettings.getState().setCurrentUserId(data.user.id);
+          useSettings.getState().loadPromptsFromDB();
+        }
       } else {
         console.log("User already signed in:", session.user.id);
+        // Set user ID for DB prompt sync
+        useSettings.getState().setCurrentUserId(session.user.id);
+        useSettings.getState().loadPromptsFromDB();
       }
     };
     initAuth();
@@ -151,65 +162,16 @@ export default function Dashboard() {
         }
       }
 
-      // 1. Token
-      const response = await fetch('/api/deepgram/token');
-      const { key } = await response.json();
-      if (!key) throw new Error("No Deepgram Key");
+      const currentProvider = useSettings.getState().sttProvider;
 
-      // 2. Deepgram
-      const deepgram = getDeepgramClient();
-      const deepgramClient = (window as any).dgClient || deepgram;
-      const connection = setupDeepgramConnection(deepgramClient);
+      if (currentProvider === 'gemini') {
+        // === GEMINI LIVE PATH ===
+        await startGeminiRecording();
+      } else {
+        // === DEEPGRAM PATH ===
+        await startDeepgramRecording();
+      }
 
-      connection.on(LiveTranscriptionEvents.Open, () => {
-        connection.on(LiveTranscriptionEvents.Transcript, async (data: any) => {
-          const sentence = data.channel.alternatives[0].transcript;
-          if (sentence && data.is_final) {
-            transcriptBufferRef.current += " " + sentence;
-
-            // Save Transcript Chunk
-            if (sessionIdRef.current) {
-              const { error } = await supabase.from('transcripts').insert({
-                session_id: sessionIdRef.current,
-                content: sentence,
-                timestamp_offset_ms: Math.floor(data.start * 1000)
-              });
-              if (error) console.error("Transcript Save Error:", error);
-
-              // Auto-Title: Update session title with first sentence
-              if (transcript.length === 0 && sentence.length > 5) {
-                const newTitle = sentence.slice(0, 40) + (sentence.length > 40 ? "..." : "");
-                supabase.from('sessions').update({ title: newTitle }).eq('id', sessionIdRef.current).then(res => {
-                  if (res.error) console.error("Title Update Error:", res.error);
-                });
-              }
-            }
-
-            if (transcriptBufferRef.current.length > interventionInterval) {
-              processWithGemini(transcriptBufferRef.current);
-              transcriptBufferRef.current = "";
-            }
-
-            setTranscript(prev => [...prev, {
-              speaker: data.channel.alternatives[0].words?.[0]?.speaker || 0,
-              text: sentence,
-              isFinal: true,
-              timestamp: Date.now()
-            }]);
-          }
-        });
-      });
-
-      deepgramConnectionRef.current = connection;
-
-      // 3. Audio
-      audioCaptureRef.current!.onAudioData = (blob) => {
-        if (connection.getReadyState() === LiveConnectionState.OPEN) {
-          connection.send(blob);
-        }
-      };
-
-      await audioCaptureRef.current!.start();
       setIsRecording(true);
     } catch (err: any) {
       console.error("Failed to start:", err);
@@ -217,12 +179,170 @@ export default function Dashboard() {
     }
   };
 
+  // Deepgram-specific recording logic
+  const startDeepgramRecording = async () => {
+    // 1. Token
+    const response = await fetch('/api/deepgram/token');
+    const { key } = await response.json();
+    if (!key) throw new Error("No Deepgram Key");
+
+    // 2. Deepgram connection
+    const deepgram = getDeepgramClient();
+    const deepgramClient = (window as any).dgClient || deepgram;
+    const connection = setupDeepgramConnection(deepgramClient);
+
+    connection.on(LiveTranscriptionEvents.Open, () => {
+      connection.on(LiveTranscriptionEvents.Transcript, async (data: any) => {
+        const sentence = data.channel.alternatives[0].transcript;
+        if (sentence && data.is_final) {
+          transcriptBufferRef.current += " " + sentence;
+
+          // Save Transcript Chunk
+          if (sessionIdRef.current) {
+            const { error } = await supabase.from('transcripts').insert({
+              session_id: sessionIdRef.current,
+              content: sentence,
+              timestamp_offset_ms: Math.floor(data.start * 1000)
+            });
+            if (error) console.error("Transcript Save Error:", error);
+
+            // Auto-Title
+            if (transcript.length === 0 && sentence.length > 5) {
+              const newTitle = sentence.slice(0, 40) + (sentence.length > 40 ? "..." : "");
+              supabase.from('sessions').update({ title: newTitle }).eq('id', sessionIdRef.current).then(res => {
+                if (res.error) console.error("Title Update Error:", res.error);
+              });
+            }
+          }
+
+          if (transcriptBufferRef.current.length > interventionInterval) {
+            processWithGemini(transcriptBufferRef.current);
+            transcriptBufferRef.current = "";
+          }
+
+          setTranscript(prev => [...prev, {
+            speaker: data.channel.alternatives[0].words?.[0]?.speaker || 0,
+            text: sentence,
+            isFinal: true,
+            timestamp: Date.now()
+          }]);
+        }
+      });
+    });
+
+    deepgramConnectionRef.current = connection;
+
+    // 3. Audio (WebM format for Deepgram)
+    audioCaptureRef.current!.onAudioData = (blob) => {
+      if (connection.getReadyState() === LiveConnectionState.OPEN) {
+        connection.send(blob as Blob);
+      }
+    };
+
+    await audioCaptureRef.current!.start(undefined, 'webm');
+  };
+
+  // Gemini Live-specific recording logic
+  const startGeminiRecording = async () => {
+    // Fetch API key from server (keeps it secure on server-side)
+    const tokenResponse = await fetch('/api/gemini-live/token');
+    const tokenData = await tokenResponse.json();
+
+    if (tokenData.error) {
+      throw new Error(tokenData.error);
+    }
+
+    const apiKey = tokenData.key;
+
+    if (!apiKey) {
+      throw new Error("Google AI API Key not configured. Please set GOOGLE_GENERATIVE_AI_API_KEY in .env.local");
+    }
+
+    // Create Gemini Live session
+    const session = await createGeminiLiveSession({
+      apiKey,
+      onTranscript: (text, speaker) => {
+        // Add to transcript UI
+        setTranscript(prev => [...prev, {
+          speaker: speaker === 'Speaker 1' ? 0 : 1,
+          text: text,
+          isFinal: true,
+          timestamp: Date.now()
+        }]);
+
+        // Buffer for AI insights (same as Deepgram flow)
+        transcriptBufferRef.current += " " + text;
+
+        console.log(`Buffer size: ${transcriptBufferRef.current.length} / ${interventionInterval}`);
+
+        // Process with AI when buffer is large enough
+        if (transcriptBufferRef.current.length > interventionInterval) {
+          console.log("Calling processWithGemini with:", transcriptBufferRef.current.substring(0, 100) + "...");
+          processWithGemini(transcriptBufferRef.current);
+          transcriptBufferRef.current = "";
+        }
+
+        // Save to Supabase
+        if (sessionIdRef.current && text) {
+          supabase.from('transcripts').insert({
+            session_id: sessionIdRef.current,
+            content: text,
+            speaker_label: speaker,
+          }).then(({ error }) => {
+            if (error) console.error("Transcript Save Error:", error);
+          });
+
+          // Auto-Title
+          if (transcript.length === 0 && text.length > 5) {
+            const newTitle = text.slice(0, 40) + (text.length > 40 ? "..." : "");
+            supabase.from('sessions').update({ title: newTitle }).eq('id', sessionIdRef.current).then(res => {
+              if (res.error) console.error("Title Update Error:", res.error);
+            });
+          }
+        }
+      },
+      onError: (error) => {
+        console.error("Gemini Live Error:", error);
+        toast({
+          title: "Gemini Error",
+          description: error.message,
+          variant: "destructive"
+        });
+      },
+      onOpen: () => {
+        console.log("Gemini Live connected");
+      },
+      onClose: () => {
+        console.log("Gemini Live disconnected");
+      }
+    });
+
+    geminiSessionRef.current = session;
+
+    // Audio (PCM format for Gemini)
+    audioCaptureRef.current!.onAudioData = (data) => {
+      if (session.isConnected()) {
+        session.send(data as ArrayBuffer);
+      }
+    };
+
+    await audioCaptureRef.current!.start(undefined, 'pcm');
+  };
+
   const stopRecording = async () => {
     audioCaptureRef.current?.stop();
+
+    // Stop Deepgram if active
     deepgramConnectionRef.current?.finish();
+    deepgramConnectionRef.current = null;
+
+    // Stop Gemini if active
+    geminiSessionRef.current?.close();
+    geminiSessionRef.current = null;
+
     setIsRecording(false);
 
-    // Process remaining buffer
+    // Process remaining buffer (only for Deepgram mode)
     if (transcriptBufferRef.current.length > 5) {
       processWithGemini(transcriptBufferRef.current);
       transcriptBufferRef.current = "";

@@ -22,22 +22,32 @@ export async function POST(req: Request) {
         [MEMORY / PREVIOUS CONTEXT]
         "${previousContext || "Meeting just started."}"
 
+        [CRITICAL RULES]
+        - BE SELECTIVE: Only intervene when there is GENUINE VALUE to add. 
+        - Quality over quantity: A great coach speaks rarely but meaningfully.
+        - DO NOT intervene just because you received new text.
+        - Set needsIntervention=false UNLESS one of these conditions is met:
+          * User asks a direct question that needs answering
+          * There's a significant insight or pattern worth highlighting
+          * User seems confused or stuck and needs guidance
+          * Important action item or key decision is mentioned
+
         [TASK]
         1. Analyze the new transcript chunk below.
         2. UPDATE the executive summary of the meeting context (max 2 sentences).
-        3. Decide if a sub-agent should intervene based on the new info.
+        3. ONLY intervene if genuinely valuable - most of the time, needsIntervention should be FALSE.
         
         [AGENTS & INSTRUCTIONS]
         `;
 
         if (activeAgents.question) {
-            systemContext += `\n- QUESTION AGENT: "${prompts.question}" (Trigger: High ambiguity, missed detail)`;
+            systemContext += `\n- QUESTION AGENT: "${prompts.question}" (Trigger: High ambiguity, missed detail, or user seems stuck)`;
         }
         if (activeAgents.answer) {
-            systemContext += `\n- ANSWER AGENT: "${prompts.answer}" (Trigger: Direct question asked to user)`;
+            systemContext += `\n- ANSWER AGENT: "${prompts.answer}" (Trigger: ONLY when direct question asked that you can answer)`;
         }
         if (activeAgents.insight) {
-            systemContext += `\n- INSIGHT AGENT: "${prompts.insight}" (Trigger: Interesting pattern, sentiment shift)`;
+            systemContext += `\n- INSIGHT AGENT: "${prompts.insight}" (Trigger: Key takeaway, action item, or truly interesting pattern)`;
         }
 
         systemContext += `
@@ -46,7 +56,7 @@ export async function POST(req: Request) {
         Return purely JSON:
         {
             "updatedContext": "The new running summary of the conversation...",
-            "needsIntervention": boolean,
+            "needsIntervention": boolean (DEFAULT TO FALSE unless genuinely valuable),
             "type": "QUESTION" | "ANSWER" | "INSIGHT" | "NONE",
             "content": "The actual feedback string if intervention is needed."
         }

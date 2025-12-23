@@ -5,14 +5,46 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { useSettings } from "@/lib/store/settings";
+import { useSettings, PromptType } from "@/lib/store/settings";
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
-import { useState } from "react";
+import { Settings, Check, Loader2, RotateCcw, Save } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 
 export function SettingsDialog() {
-    const { agents, interventionInterval, toggleAgent, setInterval, prompts, setPrompt } = useSettings();
-    const [activeTab, setActiveTab] = useState<'orchestrator' | 'question' | 'answer' | 'insight'>('orchestrator');
+    const {
+        agents, interventionInterval, toggleAgent, setInterval, prompts,
+        isSyncing, lastSyncedAt, savePromptToDB, resetPromptToDefault, sttProvider, setSttProvider
+    } = useSettings();
+    const [activeTab, setActiveTab] = useState<PromptType>('orchestrator');
+    const [localPrompt, setLocalPrompt] = useState(prompts[activeTab]);
+    const [hasChanges, setHasChanges] = useState(false);
+
+    // Sync local prompt when tab changes
+    useEffect(() => {
+        setLocalPrompt(prompts[activeTab]);
+        setHasChanges(false);
+    }, [activeTab, prompts]);
+
+    // Handle prompt changes
+    const handlePromptChange = (value: string) => {
+        setLocalPrompt(value);
+        setHasChanges(value !== prompts[activeTab]);
+    };
+
+    // Save prompt to DB
+    const handleSavePrompt = async () => {
+        await savePromptToDB(activeTab, localPrompt);
+        setHasChanges(false);
+    };
+
+    // Reset to default
+    const handleResetPrompt = async () => {
+        if (confirm(`Reset ${activeTab} prompt to default?`)) {
+            await resetPromptToDefault(activeTab);
+            setLocalPrompt(prompts[activeTab]);
+            setHasChanges(false);
+        }
+    };
 
     return (
         <Dialog>
@@ -23,9 +55,51 @@ export function SettingsDialog() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Coach Configuration</DialogTitle>
+                    <div className="flex items-center justify-between">
+                        <DialogTitle>Coach Configuration</DialogTitle>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {isSyncing ? (
+                                <>
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    <span>Syncing...</span>
+                                </>
+                            ) : lastSyncedAt ? (
+                                <>
+                                    <Check className="w-3 h-3 text-green-500" />
+                                    <span>Saved</span>
+                                </>
+                            ) : null}
+                        </div>
+                    </div>
                 </DialogHeader>
                 <div className="grid gap-6 py-4">
+
+                    {/* 0. STT PROVIDER */}
+                    <div className="space-y-4">
+                        <h4 className="font-medium leading-none">Speech-to-Text Provider</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={() => setSttProvider('gemini')}
+                                className={`flex flex-col items-center border p-3 rounded-md transition-all ${sttProvider === 'gemini'
+                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                        : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    }`}
+                            >
+                                <span className="text-sm font-semibold">Gemini Live</span>
+                                <span className="text-xs text-muted-foreground">Native Audio AI</span>
+                            </button>
+                            <button
+                                onClick={() => setSttProvider('deepgram')}
+                                className={`flex flex-col items-center border p-3 rounded-md transition-all ${sttProvider === 'deepgram'
+                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                        : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    }`}
+                            >
+                                <span className="text-sm font-semibold">Deepgram</span>
+                                <span className="text-xs text-muted-foreground">STT + Gemini Coach</span>
+                            </button>
+                        </div>
+                    </div>
 
                     {/* 1. AGENTS TOGGLE */}
                     <div className="space-y-4">
@@ -59,12 +133,14 @@ export function SettingsDialog() {
                             step={50}
                             onValueChange={(vals) => setInterval(vals[0])}
                         />
-                        <p className="text-xs text-muted-foreground">Slow down if you encounter Rate Limit errors.</p>
                     </div>
 
                     {/* 3. PROMPT EDITOR (Tabs) */}
                     <div className="space-y-4 border-t pt-4">
-                        <h4 className="font-medium leading-none">Agent Prompts & Persona</h4>
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-medium leading-none">Agent Prompts & Persona</h4>
+                            <span className="text-xs text-muted-foreground">Saved to cloud ☁️</span>
+                        </div>
 
                         {/* Custom Tabs */}
                         <div className="flex space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
@@ -73,8 +149,8 @@ export function SettingsDialog() {
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
                                     className={`flex-1 text-xs py-1.5 px-2 rounded-md transition-all capitalize ${activeTab === tab
-                                        ? 'bg-white dark:bg-black shadow-sm font-medium text-black dark:text-white'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                            ? 'bg-white dark:bg-black shadow-sm font-medium text-black dark:text-white'
+                                            : 'text-slate-500 hover:text-slate-700'
                                         }`}
                                 >
                                     {tab}
@@ -83,18 +159,46 @@ export function SettingsDialog() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="capitalize text-sm text-slate-500">
-                                {activeTab} Agent Instructions
-                            </Label>
+                            <div className="flex items-center justify-between">
+                                <Label className="capitalize text-sm text-slate-500">
+                                    {activeTab} Agent Instructions
+                                </Label>
+                                <div className="flex gap-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={handleResetPrompt}
+                                        disabled={isSyncing}
+                                    >
+                                        <RotateCcw className="w-3 h-3 mr-1" />
+                                        Default
+                                    </Button>
+                                    <Button
+                                        variant={hasChanges ? "default" : "ghost"}
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={handleSavePrompt}
+                                        disabled={isSyncing || !hasChanges}
+                                    >
+                                        {isSyncing ? (
+                                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                        ) : (
+                                            <Save className="w-3 h-3 mr-1" />
+                                        )}
+                                        Save
+                                    </Button>
+                                </div>
+                            </div>
                             <textarea
                                 className="w-full h-40 p-3 text-sm border rounded-md bg-slate-50 dark:bg-slate-900 resize-none font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                value={prompts[activeTab]}
-                                onChange={(e) => setPrompt(activeTab, e.target.value)}
+                                value={localPrompt}
+                                onChange={(e) => handlePromptChange(e.target.value)}
                                 placeholder={`Enter instructions for ${activeTab}...`}
                             />
-                            <p className="text-[10px] text-slate-400">
-                                Tip: Be specific about the output style and constraints.
-                            </p>
+                            {hasChanges && (
+                                <p className="text-xs text-amber-600">⚠️ Unsaved changes</p>
+                            )}
                         </div>
                     </div>
 
@@ -104,12 +208,12 @@ export function SettingsDialog() {
                             size="sm"
                             className="text-red-500 hover:text-red-700 hover:bg-red-50"
                             onClick={() => {
-                                if (confirm("Reset all prompts and settings to default?")) {
+                                if (confirm("Reset ALL prompts and settings to default?")) {
                                     useSettings.getState().resetDefaults();
                                 }
                             }}
                         >
-                            Reset to Defaults
+                            Reset All to Defaults
                         </Button>
                     </div>
 
@@ -118,3 +222,4 @@ export function SettingsDialog() {
         </Dialog>
     );
 }
+
