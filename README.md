@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 회의 코파일럿
 
-## Getting Started
+내 메모와 회의 맥락을 보존하고, 실시간 요약·확인 질문·인사이트를 제공하는 Next.js 앱입니다.
 
-First, run the development server:
+## 실행
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`/`에서 회의를 작성하고 `/meetings`에서 브라우저에 저장한 기록을 검색합니다. 메모·수동 전사·회의록 초안·편집·Markdown 내보내기는 API 키 없이 사용할 수 있습니다. 새 기록은 로컬 브라우저 저장소에 보관되며 클라우드에 동기화되지 않습니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+실시간 음성과 AI 분석은 `.env.example`을 참고해 런타임 환경변수를 설정하세요. Supabase anonymous sign-in과 실제 계정에서 사용 가능한 Gemini Live/코칭 모델이 필요합니다. 모델명을 임의로 고정하지 않습니다. 장기 키는 서버에만 두며 Live 연결은 인증된 단기 토큰을 사용합니다.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+실제 음성 연결과 AI 품질·지연은 자격증명을 연결한 뒤 검증해야 합니다. MCP는 아직 직접 연결되지 않으며, 이전 미팅 노트와 참고자료를 직접 추가할 수 있습니다. `/history`는 기존 Supabase 기록용입니다.
 
-## Learn More
+## 검증
 
-To learn more about Next.js, take a look at the following resources:
+테스트는 Node 24를 사용합니다.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm test
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+선택적 브라우저 스모크 테스트: Python Playwright와 `/usr/bin/chromium`이 설치된 환경에서 공급자 설정 없이 `npm run start -- --port 3100`을 실행한 뒤 `python tests/browser_smoke.py`를 실행합니다.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+구현 범위·인증·데이터·제약은 [구현 문서](docs/implementation.md)를 참고하세요.

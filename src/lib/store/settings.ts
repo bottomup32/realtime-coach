@@ -2,11 +2,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface AgentConfig {
-    enabled: boolean;
-    frequency: number; // 0-10 (Sensitivity)
-}
-
 export type SttProvider = 'deepgram' | 'gemini';
 export type PromptType = 'orchestrator' | 'question' | 'answer' | 'insight';
 

@@ -130,10 +130,10 @@ export async function GET(request: NextRequest) {
             prompts: mergedPrompts,
             isDefault: prompts?.length === 0
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Prompts GET error:', error);
         return NextResponse.json(
-            { error: error.message },
+            { error: (error instanceof Error ? error.message : "Prompt operation failed") },
             { status: 500 }
         );
     }
@@ -143,7 +143,10 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
     try {
         const supabase = getSupabaseClient();
-        const { type, content, userId } = await request.json();
+        const { type, content } = await request.json();
+        const token = request.headers.get('authorization')?.replace(/^Bearer /, '');
+        const { data: auth } = token ? await supabase.auth.getUser(token) : { data: { user: null } };
+        const userId = auth.user?.id;
 
         if (!type || !content) {
             return NextResponse.json(
@@ -183,16 +186,16 @@ export async function PUT(request: NextRequest) {
         if (error) {
             console.error('Error saving prompt:', error);
             return NextResponse.json(
-                { error: error.message },
+                { error: (error instanceof Error ? error.message : "Prompt operation failed") },
                 { status: 500 }
             );
         }
 
         return NextResponse.json({ success: true, prompt: data });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Prompts PUT error:', error);
         return NextResponse.json(
-            { error: error.message },
+            { error: (error instanceof Error ? error.message : "Prompt operation failed") },
             { status: 500 }
         );
     }
@@ -202,7 +205,10 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
     try {
         const supabase = getSupabaseClient();
-        const { type, userId } = await request.json();
+        const { type } = await request.json();
+        const token = request.headers.get('authorization')?.replace(/^Bearer /, '');
+        const { data: auth } = token ? await supabase.auth.getUser(token) : { data: { user: null } };
+        const userId = auth.user?.id;
 
         if (!type || !userId) {
             return NextResponse.json(
@@ -220,7 +226,7 @@ export async function DELETE(request: NextRequest) {
         if (error) {
             console.error('Error deleting prompt:', error);
             return NextResponse.json(
-                { error: error.message },
+                { error: (error instanceof Error ? error.message : "Prompt operation failed") },
                 { status: 500 }
             );
         }
@@ -229,10 +235,10 @@ export async function DELETE(request: NextRequest) {
             success: true,
             defaultContent: DEFAULT_PROMPTS[type]
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Prompts DELETE error:', error);
         return NextResponse.json(
-            { error: error.message },
+            { error: (error instanceof Error ? error.message : "Prompt operation failed") },
             { status: 500 }
         );
     }

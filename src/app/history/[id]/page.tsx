@@ -1,18 +1,18 @@
 
 "use client";
-import React, { useEffect, useState, use } from 'react';
+import React, { useEffect, useState, use, useMemo } from 'react';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronLeft, MessageSquare, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+function CloudSessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
-    const [transcript, setTranscript] = useState<any[]>([]);
-    const [insights, setInsights] = useState<any[]>([]);
+    const [transcript, setTranscript] = useState<{ id: string; created_at: string; speaker_label?: string; content: string; type?: string }[]>([]);
+    const [insights, setInsights] = useState<{ id: string; created_at: string; speaker_label?: string; content: string; type?: string }[]>([]);
     const [loading, setLoading] = useState(true);
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
 
     useEffect(() => {
         const loadData = async () => {
@@ -33,7 +33,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
             setLoading(false);
         };
         loadData();
-    }, [resolvedParams.id]);
+    }, [resolvedParams.id, supabase]);
 
     const handleDownload = () => {
         const lines = transcript.map(t => `[${new Date(t.created_at).toLocaleTimeString()}] ${t.speaker_label || "Speaker"}: ${t.content}`);
@@ -112,4 +112,9 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
             </div>
         </div>
     );
+}
+
+export default function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return <main className="meeting-shell"><p>기존 클라우드 기록은 Supabase 설정이 필요합니다.</p><Link href="/meetings">내 기록</Link></main>;
+ return <CloudSessionDetailPage params={params} />;
 }

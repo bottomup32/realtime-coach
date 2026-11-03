@@ -1,5 +1,5 @@
 
-import { createClient, LiveClient, LiveConnectionState } from "@deepgram/sdk";
+import { createClient } from "@deepgram/sdk";
 
 export const getDeepgramClient = () => {
     // We expect the key to be available via API route or passed in.
@@ -8,7 +8,7 @@ export const getDeepgramClient = () => {
 };
 
 // Hook or Helper for Live Connection
-export const setupDeepgramConnection = (client: any) => {
+export const setupDeepgramConnection = (client: ReturnType<typeof createClient>) => {
     const connection = client.listen.live({
         model: "nova-2",
         language: "ko",

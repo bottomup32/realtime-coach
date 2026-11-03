@@ -1,22 +1,3 @@
-
-import { DeepgramError, createClient } from "@deepgram/sdk";
-import { NextResponse } from "next/server";
-
-export const dynamic = "force-dynamic";
-
 export async function GET() {
-    const deepgramApiKey = process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
-
-    if (!deepgramApiKey) {
-        return NextResponse.json(
-            { error: "Deepgram API key not configured" },
-            { status: 500 }
-        );
-    }
-
-    // MVP: Direct key return for functional testing.
-    // We avoid creating temporary keys server-side because we lack a Project ID.
-    return NextResponse.json({
-        key: deepgramApiKey,
-    });
+  return Response.json({ error: "이전 키 반환 API는 종료됐습니다. 인증된 Gemini Live 단기 토큰 경로를 사용하세요." }, { status: 410 });
 }

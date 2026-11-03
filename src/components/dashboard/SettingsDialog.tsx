@@ -8,7 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { useSettings, PromptType } from "@/lib/store/settings";
 import { Button } from "@/components/ui/button";
 import { Settings, Check, Loader2, RotateCcw, Save } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 
 export function SettingsDialog() {
     const {
@@ -16,25 +16,19 @@ export function SettingsDialog() {
         isSyncing, lastSyncedAt, savePromptToDB, resetPromptToDefault, sttProvider, setSttProvider
     } = useSettings();
     const [activeTab, setActiveTab] = useState<PromptType>('orchestrator');
-    const [localPrompt, setLocalPrompt] = useState(prompts[activeTab]);
-    const [hasChanges, setHasChanges] = useState(false);
-
-    // Sync local prompt when tab changes
-    useEffect(() => {
-        setLocalPrompt(prompts[activeTab]);
-        setHasChanges(false);
-    }, [activeTab, prompts]);
+    const [drafts, setDrafts] = useState<Partial<Record<PromptType, string>>>({});
+    const localPrompt = drafts[activeTab] ?? prompts[activeTab];
+    const hasChanges = localPrompt !== prompts[activeTab];
+    const setLocalPrompt = (value: string) => setDrafts(previous => ({ ...previous, [activeTab]: value }));
 
     // Handle prompt changes
     const handlePromptChange = (value: string) => {
         setLocalPrompt(value);
-        setHasChanges(value !== prompts[activeTab]);
     };
 
     // Save prompt to DB
     const handleSavePrompt = async () => {
         await savePromptToDB(activeTab, localPrompt);
-        setHasChanges(false);
     };
 
     // Reset to default
@@ -42,7 +36,6 @@ export function SettingsDialog() {
         if (confirm(`Reset ${activeTab} prompt to default?`)) {
             await resetPromptToDefault(activeTab);
             setLocalPrompt(prompts[activeTab]);
-            setHasChanges(false);
         }
     };
 

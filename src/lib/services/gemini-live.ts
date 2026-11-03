@@ -3,7 +3,7 @@
  * Handles WebSocket connection to Gemini for real-time audio transcription
  */
 
-import { GoogleGenAI, Modality } from '@google/genai';
+import { GoogleGenAI, Modality, type Session, type LiveServerMessage } from '@google/genai';
 
 export interface GeminiLiveConfig {
     apiKey?: string;
@@ -31,13 +31,12 @@ export async function createGeminiLiveSession(config: GeminiLiveConfig): Promise
         apiKey: config.apiKey || config.ephemeralToken,
     });
 
-    const responseQueue: any[] = [];
-    let session: any = null;
+    const responseQueue: LiveServerMessage[] = [];
+    let session: Session | null = null;
     let isConnected = false;
 
     // Transcript buffering for sentence-level output
     let transcriptBuffer = '';
-    let lastTranscriptTime = Date.now();
     let flushTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const SENTENCE_ENDINGS = /[.!?。？！]/;
@@ -62,6 +61,7 @@ export async function createGeminiLiveSession(config: GeminiLiveConfig): Promise
     const processMessages = () => {
         while (responseQueue.length > 0) {
             const message = responseQueue.shift();
+            if (!message) continue;
 
             try {
                 // Handle input transcription (the audio we sent)
@@ -70,7 +70,6 @@ export async function createGeminiLiveSession(config: GeminiLiveConfig): Promise
 
                     // Add to buffer
                     transcriptBuffer += text;
-                    lastTranscriptTime = Date.now();
 
                     // Clear existing flush timeout
                     if (flushTimeout) {
@@ -112,22 +111,22 @@ export async function createGeminiLiveSession(config: GeminiLiveConfig): Promise
                     config.onOpen?.();
                     processMessages();
                 },
-                onmessage: (message: any) => {
+                onmessage: (message: LiveServerMessage) => {
                     responseQueue.push(message);
                 },
-                onerror: (e: any) => {
+                onerror: (e: ErrorEvent) => {
                     console.error('Gemini Live error:', e.message);
                     config.onError?.(new Error(e.message));
                 },
-                onclose: (e: any) => {
+                onclose: (e: CloseEvent) => {
                     isConnected = false;
                     console.log('Gemini Live closed:', e?.reason);
                     config.onClose?.();
                 },
             },
         });
-    } catch (error: any) {
-        config.onError?.(error);
+    } catch (error: unknown) {
+        config.onError?.(error instanceof Error ? error : new Error("Live connection failed"));
         throw error;
     }
 

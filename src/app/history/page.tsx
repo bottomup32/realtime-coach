@@ -1,21 +1,18 @@
 
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Link from 'next/link';
 import { ChevronLeft, Calendar, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function HistoryPage() {
-    const [sessions, setSessions] = useState<any[]>([]);
-    const supabase = createClient();
+function CloudHistoryPage() {
+    const [sessions, setSessions] = useState<{ id: string; title: string; started_at: string }[]>([]);
+    const supabase = useMemo(() => createClient(), []);
 
     useEffect(() => {
-        fetchSessions();
-    }, []);
-
-    const fetchSessions = async () => {
+      const fetchSessions = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             const { data } = await supabase
@@ -25,7 +22,9 @@ export default function HistoryPage() {
                 .order('started_at', { ascending: false });
             setSessions(data || []);
         }
-    };
+      };
+      void fetchSessions();
+    }, [supabase]);
 
     const deleteSession = async (id: string, e: React.MouseEvent) => {
         e.preventDefault();
@@ -95,4 +94,9 @@ export default function HistoryPage() {
             </div>
         </div>
     );
+}
+
+export default function HistoryPage() {
+ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return <main className="meeting-shell"><h1>기존 클라우드 기록</h1><p>Supabase 설정이 필요합니다. 새 기록은 이 브라우저에 저장됩니다.</p><Link href="/meetings">내 회의 기록으로 이동</Link></main>;
+ return <CloudHistoryPage />;
 }
