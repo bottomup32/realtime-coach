@@ -54,7 +54,7 @@ export function MeetingWorkspace({ showLibrary = false }: { showLibrary?: boolea
       const transcript = snapshot.transcript.slice(-60).map(t => ({ ...t, text: t.text.slice(0, 4000) }));
       const response = await fetch("/api/coach/analyze", { method: "POST", headers, signal: controller.signal, body: JSON.stringify({
         goal: snapshot.goal.slice(0, 2000), notes: snapshot.notes.slice(-6000), context: snapshot.context.slice(0, 6000),
-        summary: JSON.stringify({ summary: snapshot.summary, decisions: snapshot.decisions, actions: snapshot.actions, openQuestions: snapshot.openQuestions }).slice(0, 10000), transcript,
+        summary: JSON.stringify({ summary: snapshot.summary, decisions: snapshot.decisions, actions: snapshot.actions, openQuestions: snapshot.openQuestions, recentCards: snapshot.cards.slice(-5).map(c => c.content) }).slice(0, 10000), transcript,
       }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "분석에 실패했습니다.");
