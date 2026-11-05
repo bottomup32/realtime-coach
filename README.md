@@ -4,6 +4,8 @@
 
 ## 실행
 
+로컬의 녹음 오류나 `realtime-coach/realtime-coach` 중첩 폴더 문제는 [로컬 설정·정리 안내](docs/local-setup.md)를 먼저 확인하세요. `npm run setup:check`는 키 값 없이 실행 폴더와 설정 존재 여부를 진단합니다.
+
 ```bash
 npm ci
 npm run dev

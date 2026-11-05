@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 export async function authorize(request: Request): Promise<Response | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const runtime = process.env;
+  const url = runtime.NEXT_PUBLIC_SUPABASE_URL;
+  const key = runtime.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return Response.json({ error: "실시간 AI를 사용하려면 Supabase 인증 설정이 필요합니다. 메모와 수동 전사는 사용할 수 있습니다." }, { status: 503 });
   const token = request.headers.get("authorization")?.match(/^Bearer (.+)$/)?.[1];
   if (!token) return Response.json({ error: "로그인이 필요합니다." }, { status: 401 });
