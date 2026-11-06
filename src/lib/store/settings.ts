@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type SttProvider = 'deepgram' | 'gemini';
+export type SttProvider = 'gemini';
 export type PromptType = 'orchestrator' | 'question' | 'answer' | 'insight';
 
 const DEFAULT_PROMPTS: Record<PromptType, string> = {

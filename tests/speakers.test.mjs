@@ -1,13 +1,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {groupSpeakerWords} from '../src/lib/coach/speakers.ts';
+import {speakerName} from '../src/lib/coach/speakers.ts';
 import {newMeeting,personalCards,applyAnalysis} from '../src/lib/coach/model.ts';
-test('provider word speakers produce ordered A/B/A utterances, unknown stays unknown',()=>{
- const items=groupSpeakerWords([{word:'출시',speaker:0,start:1},{word:'일정',speaker:0},{word:'확인',speaker:1},{word:'동의',speaker:0},{word:'겹침'}],'session1',0);
- assert.equal(items.length,4);assert.equal(items[0].text,'출시 일정');assert.equal(items[1].speakerLabel,'Speaker B');assert.equal(items[2].speakerLabel,'Speaker A');assert.equal(items[3].speakerId,undefined);assert.equal(items[0].at,'1970-01-01T00:00:01.000Z');
-});
-test('speaker IDs are scoped to the provider session, not guessed across reconnects',()=>{
- assert.notEqual(groupSpeakerWords([{word:'안녕',speaker:0}],'one',0)[0].speakerId,groupSpeakerWords([{word:'안녕',speaker:0}],'two',0)[0].speakerId);
+test('unassigned speech stays unknown; manual labels are preserved',()=>{
+ assert.equal(speakerName({id:'x',text:'대화',at:'now'}),'화자 미확인');
+ assert.equal(speakerName({id:'x',text:'대화',at:'now',speakerId:'manual-b',speakerLabel:'Speaker B'}),'Speaker B');
 });
 test('personal coaching must cite only the selected speaker; meeting questions remain',()=>{
  const transcript=[{id:'a',text:'A',at:'now',speakerId:'A'},{id:'b',text:'B',at:'now',speakerId:'B'}];

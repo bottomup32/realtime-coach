@@ -11,7 +11,6 @@ with sync_playwright() as p:
  page=c.new_page()
  page.add_init_script('window.captureInfo={};navigator.mediaDevices.getUserMedia=async()=>{const ac=new AudioContext();window.silentMicContext=ac;const dest=ac.createMediaStreamDestination();const osc=ac.createOscillator();const gain=ac.createGain();gain.gain.value=0;osc.connect(gain).connect(dest);osc.start();await ac.resume();return dest.stream;};const original=navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);navigator.mediaDevices.getDisplayMedia=async(...args)=>{const s=await original(...args);window.captureInfo={audio:s.getAudioTracks().map(t=>({label:t.label,settings:t.getSettings()})),video:s.getVideoTracks().map(t=>({label:t.label,settings:t.getSettings()}))};return s;};')
  page.goto('http://127.0.0.1:3101/')
- page.get_by_label('전사 방식').select_option('gemini')
  page.get_by_role('tab',name='참고자료',exact=True).click()
  page.get_by_role('switch',name='탭 오디오 함께 수집',exact=False).check()
  page.get_by_role('tab',name='실시간 전사',exact=True).click()

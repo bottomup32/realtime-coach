@@ -5,11 +5,12 @@ with sync_playwright() as p:
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.goto('http://127.0.0.1:3100/')
-    page.get_by_label('전사 방식').select_option('gemini')
     page.get_by_role('textbox', name='회의 제목', exact=True).fill('출시 범위 검토')
     page.get_by_role('textbox', name='오늘 결정할 일', exact=True).fill('담당자와 기한 결정')
     page.get_by_role('tab',name='내 메모',exact=True).click()
+    page.get_by_role('tab',name='내 메모',exact=True).click()
     page.get_by_role('textbox', name='내 메모', exact=True).fill('사용자 원문은 그대로 보존')
+    page.get_by_role('tab',name='실시간 전사',exact=True).click()
     page.get_by_role('tab',name='실시간 전사',exact=True).click()
     page.get_by_label('수동 발언', exact=True).fill('다음 주까지 출시합시다. 담당자는 아직 정하지 않았습니다.')
     page.get_by_role('button', name='발언 추가', exact=True).click()
@@ -28,7 +29,7 @@ with sync_playwright() as p:
     expect(page.get_by_label('회의록 편집')).to_have_value('# 검토 완료\n담당자는 미정입니다.')
     expect(page.get_by_role('heading', name='회의록 · 검토 완료')).to_be_visible()
     with page.expect_download() as download:
-        page.get_by_role('button', name='Markdown 내보내기').click()
+        page.get_by_role('button', name='내보내기').click()
     assert download.value.suggested_filename.endswith('.md')
     page.get_by_role('button', name='새 회의', exact=True).click()
     page.get_by_label('수동 발언', exact=True).fill('금요일에 마감하죠')

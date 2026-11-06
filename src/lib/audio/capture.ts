@@ -27,7 +27,7 @@ export class AudioCapture {
             });
 
             if (format === 'webm') {
-                // WebM/Opus for Deepgram
+                // WebM/Opus capture format
                 this.startWebmRecording();
             } else {
                 // Raw PCM for Gemini (16-bit, 16kHz, mono)

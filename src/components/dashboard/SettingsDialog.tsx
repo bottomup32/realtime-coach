@@ -81,16 +81,7 @@ export function SettingsDialog() {
                                 <span className="text-sm font-semibold">Gemini Live</span>
                                 <span className="text-xs text-muted-foreground">Native Audio AI</span>
                             </button>
-                            <button
-                                onClick={() => setSttProvider('deepgram')}
-                                className={`flex flex-col items-center border p-3 rounded-md transition-all ${sttProvider === 'deepgram'
-                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                        : 'hover:bg-slate-50 dark:hover:bg-slate-800'
-                                    }`}
-                            >
-                                <span className="text-sm font-semibold">Deepgram</span>
-                                <span className="text-xs text-muted-foreground">STT + Gemini Coach</span>
-                            </button>
+
                         </div>
                     </div>
 

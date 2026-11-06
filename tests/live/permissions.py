@@ -5,8 +5,9 @@ with sync_playwright() as p:
  page=b.new_page();calls=[]
  page.on('request',lambda r:calls.append(r.url) if '/api/gemini-live/token' in r.url else None)
  page.goto('http://127.0.0.1:3101/')
- page.get_by_label('전사 방식').select_option('gemini')
+ page.get_by_role('tab',name='내 메모',exact=True).click()
  page.get_by_role('textbox',name='내 메모',exact=True).fill('권한 거절 후에도 남아야 하는 메모')
+ page.get_by_role('tab',name='실시간 전사',exact=True).click()
  page.get_by_role('button',name='녹음 시작',exact=True).click()
  expect(page.locator('.coach-error')).to_be_visible(timeout=10000)
  expect(page.get_by_role('button',name='녹음 시작',exact=True)).to_be_enabled()

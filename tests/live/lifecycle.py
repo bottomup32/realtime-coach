@@ -17,7 +17,6 @@ with sync_playwright() as p:
   socket.on('framereceived',frame)
  page.on('websocket',ws)
  page.goto('http://127.0.0.1:3101/')
- page.get_by_label('전사 방식').select_option('gemini')
  page.get_by_role('button',name='녹음 시작',exact=True).click();expect(page.get_by_role('button',name='녹음 일시 정지',exact=True)).to_be_visible(timeout=20000)
  page.wait_for_timeout(9000)
  before=time.monotonic();page.get_by_role('button',name='녹음 일시 정지',exact=True).click();expect(page.get_by_role('button',name='녹음 시작',exact=True)).to_be_visible(timeout=15000)

@@ -11,7 +11,7 @@ test('runtime config sees values added after module/build initialization without
   assert.equal((await (await GET()).json()).supabase,null);
   configure();process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY='sb_publishable_test';
   const data=await(await GET()).json();assert.equal(data.aiReady,true);assert.equal(data.supabase.url,'https://test.supabase.co');
-  assert.deepEqual(Object.keys(data).sort(),['aiReady','diarizationReady','invalidPublicConfig','missing','supabase']);
+  assert.deepEqual(Object.keys(data).sort(),['aiReady','invalidPublicConfig','missing','supabase']);
   assert.deepEqual(Object.keys(data.supabase).sort(),['anonKey','url']);
  }finally{restore();}
 });
