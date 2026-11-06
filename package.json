@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types tests/coach.test.mjs && node tests/setup.test.mjs && node --experimental-strip-types tests/config.test.mjs",
+    "test": "node --experimental-strip-types tests/coach.test.mjs && node tests/setup.test.mjs && node --experimental-strip-types tests/config.test.mjs && node --experimental-strip-types tests/speakers.test.mjs",
     "setup:check": "node scripts/workspace.mjs",
     "repo:tidy": "node scripts/workspace.mjs"
   },

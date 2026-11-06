@@ -15,6 +15,7 @@ with sync_playwright() as p:
  page.on('response',lambda r: metrics['api_statuses'].append({'path':r.url.split('?')[0].split(':3101')[-1],'status':r.status}) if '/api/' in r.url else None)
  page.on('pageerror',lambda e:errors.append(type(e).__name__))
  page.goto('http://127.0.0.1:3101/')
+ page.get_by_label('전사 방식').select_option('gemini')
  page.get_by_role('textbox',name='회의 제목',exact=True).fill('실음성 검증 회의')
  page.get_by_role('textbox',name='오늘 결정할 일',exact=True).fill('출시 일정과 담당자 확인')
  page.get_by_role('textbox',name='내 메모',exact=True).fill('원본 메모 보존 확인')
@@ -44,7 +45,7 @@ with sync_playwright() as p:
   with page.expect_download():page.get_by_role('button',name='Markdown 내보내기').click()
   print(json.dumps({'stage':'PASS','transcript_segments':len(data['transcript']),'korean_speech_matched':True,'summary':bool(data['summary']),'cards':len(data['cards']),'saved_and_reopened':True,'export':True,'elapsed':round(time.monotonic()-started,2),'metrics':metrics,'page_errors':errors}),flush=True)
  except Exception as e:
-  alert=page.locator('.meeting-error').all_text_contents()
+  alert=page.locator('.coach-error').all_text_contents()
   print(json.dumps({'stage':'FAIL','error_type':type(e).__name__,'alert':alert,'metrics':metrics,'page_errors':errors},ensure_ascii=False),flush=True)
   page.screenshot(path='/tmp/live-validation-failure.png')
   raise

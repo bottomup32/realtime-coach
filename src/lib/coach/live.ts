@@ -30,7 +30,7 @@ export async function startLive(options: {
     }
     const mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
     streams.push(mic);
-    const response = await fetch("/api/gemini-live/token", { method: "POST", headers: await authHeaders() });
+    const response = await fetch("/api/gemini-live/token", { method: "POST", headers: await authHeaders(true) });
     const token = await response.json();
     if (!response.ok) throw new Error(token.error || "Live 연결을 준비하지 못했습니다.");
     const ai = new GoogleGenAI({ apiKey: token.token, httpOptions: { apiVersion: "v1alpha" } });

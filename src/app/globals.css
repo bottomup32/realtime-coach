@@ -163,3 +163,114 @@ body { background: #f6f7f3; }
 .meeting-library article button:first-child { text-align:left; flex:1; }
 .meeting-library small { display:block; margin-top:6px; color:#74806d; }
 @media(max-width:800px) { .meeting-shell {padding:24px 16px 60px;} .meeting-grid {grid-template-columns:1fr;} .meeting-header h1 {font-size:28px;} .meeting-panel {padding:20px;} }
+
+/* Meeting task surface. Existing legacy report styles remain scoped above. */
+.coach-app { max-width: 1500px; margin: 0 auto; padding: 0 32px 40px; color: #24352d; font: 14px/1.6 Arial, 'Noto Sans KR', sans-serif; }
+.coach-app ::selection { background: #d8e8dd; color: #1c3d2a; }
+.coach-app input,.coach-app textarea { caret-color: #315e43; }
+.coach-app :focus-visible { outline: 2px solid #347553; outline-offset: 3px; }
+.coach-header { height: 72px; display: flex; align-items: center; gap: 40px; border-bottom: 1px solid #dfe5df; }
+.coach-brand { display: inline-flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 650; white-space: nowrap; }
+.coach-header nav { display: flex; align-items: stretch; align-self: stretch; gap: 28px; }
+.coach-header nav a { display: flex; align-items: center; color: #55655a; font-size: 13px; border-bottom: 2px solid transparent; }
+.coach-header nav a[aria-current=page] { border-bottom-color: #315e43; color: #234d33; font-weight: 600; }
+.coach-save { margin-left: auto; color: #536658; font-size: 12px; }
+.coach-heading { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 25px 0 21px; }
+.coach-heading > div:first-child { flex: 1; min-width: 0; }
+.coach-heading .coach-title { border: 0; box-shadow: none; background: transparent; font-size: 24px; font-weight: 650; height: 39px; padding: 0; letter-spacing: -.5px; }
+.coach-heading .coach-goal { border: 0; box-shadow: none; background: transparent; font-size: 13px; color: #536658; padding: 0; height: 28px; max-width: 720px; }
+.coach-app input::placeholder,.coach-app textarea::placeholder { color: #68766b; }
+.coach-heading-actions,.coach-record-actions { display: flex; align-items: center; gap: 9px; }
+.coach-app button { cursor: pointer; }
+.coach-recordbar { background: #e8eee8; border: 1px solid #d9e2d9; border-radius: 10px; padding: 13px 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.coach-record-status { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.coach-record-status strong { font-size: 13px; }
+.coach-record-description { font-size: 12px; color: #4d6353; padding-left: 7px; border-left: 1px solid #b7c6b8; }
+.coach-dot { width: 7px; height: 7px; border-radius: 50%; background: #77877b; flex-shrink: 0; }
+.coach-dot.is-live { background: #bd3d36; }
+.coach-select { border: 1px solid #c8d3c9; border-radius: 6px; min-height: 34px; padding: 5px 28px 5px 9px; background: #fff; color: #304937; font-size: 12px; max-width: 100%; }
+.coach-scope { display: flex; justify-content: space-between; gap: 20px; padding: 10px 1px 17px; font-size: 11px; color: #59695c; }
+.coach-error { background: #fff5ee; border: 1px solid #d99a79; border-radius: 8px; padding: 12px 15px; margin-top: 12px; color: #813b21; }
+.coach-workspace { display: grid; grid-template-columns: minmax(0,1.17fr) minmax(0,1fr); gap: 20px; align-items: stretch; }
+.coach-conversation,.coach-assistance { padding: 0; gap: 0; min-width: 0; border-color: #dce3dc; border-radius: 12px; box-shadow: 0 2px 6px #20332204; }
+.coach-panel-heading { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; padding: 21px 22px 17px; border-bottom: 1px solid #e6ebe6; gap: 12px; }
+.coach-panel-heading [data-slot=card-title] { font-size: 16px; font-weight: 650; }
+.coach-muted { color: #5e6d62; font-size: 12px; line-height: 1.8; }
+.coach-panel-heading .coach-muted { margin-top: 6px; }
+.coach-count { color: #5e6d62; font-size: 11px; white-space: nowrap; padding-top: 2px; }
+.coach-panel-content { padding: 0; }
+.coach-speaker-picker { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; padding: 12px 20px; background: #fafbf8; border-bottom: 1px solid #e6ebe6; font-size: 12px; }
+.coach-speaker-picker label { font-weight: 600; }
+.coach-me-label { color: #315f42; display: flex; align-items: center; gap: 4px; font-size: 11px; }
+.coach-app .coach-main-tabs,.coach-app .coach-help-tabs { display: flex; width: auto; border-radius: 0; padding: 0 14px; margin: 0; height: 45px; border-bottom: 1px solid #e6ebe6; background: transparent; }
+.coach-app [data-slot=tabs-trigger] { font-size: 12px; border-radius: 0; padding: 12px 9px; height: 44px; border: 0; border-bottom: 2px solid transparent; color: #58685d; box-shadow: none; }
+.coach-app [data-slot=tabs-trigger][data-state=active] { color: #255138; border-bottom-color: #3e7251; background: transparent; box-shadow: none; }
+.coach-app [data-slot=tabs] { gap: 0; }
+.coach-app [data-slot=tabs-content] { margin: 0; }
+.coach-transcript { min-height: 355px; max-height: 480px; overflow-y: auto; overscroll-behavior: contain; scroll-padding-top: 12px; }
+.coach-empty { padding: 66px 24px; text-align: center; color: #647568; }
+.coach-empty > svg { margin: 0 auto 16px; color: #637f69; }
+.coach-empty h3 { font-size: 14px; font-weight: 600; color: #384d3d; margin-bottom: 8px; }
+.coach-empty p { font-size: 12px; line-height: 1.9; max-width: 40ch; margin: 0 auto; }
+.coach-utterance { padding: 18px 22px 15px; border-bottom: 1px solid #edf0eb; scroll-margin-top: 20px; }
+.coach-utterance[data-self=true] { background: #f1f6ef; }
+.coach-utterance:target { outline: 2px solid #5d8a65; outline-offset: -2px; }
+.coach-utterance-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.coach-avatar { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: #e7ede6; color: #3f5e46; font-size: 11px; font-weight: 650; }
+.coach-utterance-meta time { margin-left: auto; font-size: 10px; color: #647468; font-variant-numeric: tabular-nums; }
+.coach-me-tag { color: #2d653e; font-size: 10px; background: #dcebdc; border-radius: 3px; padding: 0 4px; }
+.coach-utterance p { margin: 7px 0 6px 33px; line-height: 1.9; max-width: 72ch; overflow-wrap: anywhere; }
+.coach-correct-speaker { display: flex; justify-content: flex-end; gap: 5px; align-items: center; font-size: 10px; color: #68766b; }
+.coach-correct-speaker select { max-width: 160px; border: 0; background: transparent; font-size: 10px; color: #536658; }
+.coach-partial { padding: 16px 22px; color: #596d5e; }
+.coach-partial span { font-size: 11px; }
+.coach-partial p { margin-top: 6px; }
+.coach-manual { display: flex; gap: 7px; align-items: center; padding: 14px 18px; border-top: 1px solid #e6ebe6; }
+.coach-manual input { min-width: 0; height: 35px; font-size: 12px; }
+.coach-manual select { max-width: 108px; }
+.coach-help-tabs { margin-top: 0; }
+.coach-help-feed { min-height: 380px; max-height: 485px; overflow-y: auto; overscroll-behavior: contain; }
+.coach-help-item { margin: 0 22px; padding: 20px 0; border-bottom: 1px solid #e6ebe6; }
+.coach-help-meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 11px; color: #4d6653; }
+.coach-help-meta span { display: inline-flex; align-items: center; gap: 6px; }
+.coach-help-item > p { font-size: 14px; line-height: 1.9; margin: 10px 0; overflow-wrap: anywhere; }
+.coach-help-item summary { font-size: 11px; color: #536b58; cursor: pointer; margin-bottom: 7px; }
+.coach-help-item details a { display: block; padding: 9px 12px; background: #f4f7f1; font-size: 12px; margin-bottom: 8px; border-radius: 5px; }
+.coach-help-item details a strong { display: block; font-size: 10px; margin-bottom: 4px; }
+.coach-help-item button { color: #566c5b; font-size: 11px; }
+.coach-analysis-controls { padding: 14px 20px; border-top: 1px solid #e6ebe6; }
+.coach-analysis-controls > div { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-bottom: 12px; font-size: 11px; color: #596e5d; }
+.coach-analysis-controls > button { width: 100%; }
+.coach-inline-setting { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; white-space: nowrap; color: #536658; }
+.coach-inline-setting [data-slot=switch] { transform: scale(.85); }
+.coach-summary-current,.coach-summary-history { padding: 20px 22px; }
+.coach-summary-current h3,.coach-summary-history h3 { font-size: 13px; font-weight: 650; margin-bottom: 9px; }
+.coach-summary-current > p { line-height: 1.9; max-width: 72ch; }
+.coach-summary-current section { padding-top: 17px; margin-top: 17px; border-top: 1px solid #e6ebe6; }
+.coach-summary-current h4 { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.coach-summary-current ul { list-style: disc; padding-left: 18px; font-size: 13px; line-height: 1.9; }
+.coach-summary-history { border-top: 1px solid #e6ebe6; }
+.coach-summary-history details { padding: 10px 0; border-bottom: 1px solid #e6ebe6; }
+.coach-summary-history summary { cursor: pointer; font-size: 12px; }
+.coach-summary-history p { margin-top: 8px; line-height: 1.9; font-size: 13px; }
+.coach-field-label { display: block; padding: 20px 22px 8px; font-size: 12px; font-weight: 600; }
+.coach-textarea { width: calc(100% - 44px); display: block; min-height: 340px; margin: 0 22px 12px; padding: 14px; border: 1px solid #d3ddd2; border-radius: 7px; resize: vertical; background: #fafbf8; line-height: 1.9; font-size: 13px; }
+.coach-textarea + .coach-muted { margin: 0 22px 20px; }
+.coach-report { margin-top: 24px; padding: 0; gap: 0; box-shadow: none; }
+.coach-report > [data-slot=card-content] { padding: 0; }
+.coach-report-editor { margin-top: 20px; min-height: 380px; }
+.coach-report .coach-muted { padding: 0 22px 16px; }
+.coach-library { padding: 20px 0; }
+.coach-library h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+.coach-library-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #dfe5df; }
+.coach-library-row > button:first-child { flex: 1; justify-content: space-between; min-width: 0; }
+.coach-library-row span { color: #5e6d62; font-size: 11px; }
+.coach-mobile-actions { display: none; }
+@media(max-width:1000px) { .coach-recordbar { align-items: flex-start; flex-direction: column; } .coach-record-actions { width: 100%; flex-wrap: wrap; } .coach-scope { flex-wrap: wrap; gap: 5px; } .coach-workspace { gap: 14px; } }
+@media(max-width:760px) { .coach-app { padding: 0 14px 30px; } .coach-header { gap: 20px; height: 61px; } .coach-header nav { gap: 15px; } .coach-brand { font-size: 15px; } .coach-save { display: none; } .coach-heading { gap: 8px; padding: 17px 0; flex-wrap: wrap; } .coach-heading .coach-title { font-size: 20px; } .coach-heading-actions { width: 100%; justify-content: flex-end; } .coach-record-description { display: none; } .coach-record-actions { gap: 7px; } .coach-record-actions button { font-size: 11px; } .coach-record-actions select { flex-basis: 100%; } .coach-workspace { display: block; } .coach-mobile-actions { display: flex; justify-content: flex-end; margin-bottom: 10px; } .coach-workspace[data-mobile-help=false] .coach-assistance { display: none; } .coach-workspace[data-mobile-help=true] .coach-conversation { display: none; } .coach-transcript { max-height: 55dvh; min-height: 300px; } .coach-help-feed { max-height: 55dvh; min-height: 300px; } .coach-speaker-picker { padding: 12px 15px; } .coach-speaker-picker .coach-muted { flex-basis: 100%; } .coach-manual { padding: 12px; gap: 5px; } .coach-manual select { max-width: 95px; } .coach-library-row { flex-wrap: wrap; } }
+@media(prefers-reduced-motion:reduce) { .coach-app * { scroll-behavior: auto !important; transition-duration: 0s !important; } }
+.coach-app { --primary: #315e43; --primary-foreground: #fff; --ring: #347553; }
+.coach-inline-setting { min-height: 28px; cursor: pointer; }
+.coach-inline-setting [data-slot=switch] { transform: none; }
+@media(max-width:760px) { .coach-inline-setting { min-height: 44px; } }
+@media(max-width:760px) { .coach-mobile-actions > [data-slot=tabs],.coach-mobile-actions [data-slot=tabs-list] { width: 100%; } .coach-mobile-actions [data-slot=tabs-list] { background: #e8eee8; height: 44px; padding: 0 4px; border-radius: 8px; } .coach-mobile-actions [data-slot=tabs-trigger] { height: 42px; } }

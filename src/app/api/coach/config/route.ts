@@ -19,6 +19,7 @@ export async function GET() {
   return Response.json({
     supabase: validUrl && validPublicKey ? { url, anonKey } : null,
     missing,
+    diarizationReady: !!runtime.DEEPGRAM_API_KEY?.trim(),
     invalidPublicConfig: !!(url && anonKey) && !(validUrl && validPublicKey),
     aiReady: missing.length === 0 && validUrl && validPublicKey,
   }, { headers: { "Cache-Control": "no-store" } });

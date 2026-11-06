@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-06T06:01:54.891176+00:00",
+  "title": "Design System: 회의 코치",
+  "extensions": {
+    "shadows": [
+      {
+        "name": "workspace-panel",
+        "value": "0 2px 6px #20332204",
+        "purpose": "Conversation and assistance panel separation."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "recording-wrap",
+        "value": "1000px"
+      },
+      {
+        "name": "mobile-panel-switch",
+        "value": "760px"
+      }
+    ],
+    "motion": [
+      {
+        "name": "reduced-motion",
+        "value": "transition-duration: 0s; scroll-behavior: auto",
+        "purpose": "Applied throughout the workspace when reduced motion is requested."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Implemented shadcn variant in the meeting workspace.",
+      "html": "<button class=\"ds-button-primary\">녹음 시작</button>",
+      "css": ".ds-button-primary{font-family:Arial,'Noto Sans KR',sans-serif;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:8px 16px;border-radius:8px;font-weight:500;cursor:pointer;transition:all .15s;background:var(--primary,#315e43);color:var(--primary-foreground,#fff);border:1px solid transparent;}.ds-button-primary:hover{background:color-mix(in oklab,var(--primary,#315e43) 90%,transparent)}.ds-button-primary:focus-visible{outline:2px solid var(--ring,#347553);outline-offset:3px}.ds-button-primary:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important}}"
+    },
+    {
+      "name": "Outline button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Implemented shadcn variant in the meeting workspace.",
+      "html": "<button class=\"ds-button-outline\">내보내기</button>",
+      "css": ".ds-button-outline{font-family:Arial,'Noto Sans KR',sans-serif;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:8px 16px;border-radius:8px;font-weight:500;cursor:pointer;transition:all .15s;background:var(--background,oklch(1 0 0));color:#24352d;border:1px solid var(--border,oklch(.922 0 0));box-shadow:0 1px 2px #0000000d;}.ds-button-outline:hover{background:var(--accent,oklch(.97 0 0))}.ds-button-outline:focus-visible{outline:2px solid var(--ring,#347553);outline-offset:3px}.ds-button-outline:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important}}"
+    },
+    {
+      "name": "Ghost button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Implemented shadcn variant in the meeting workspace.",
+      "html": "<button class=\"ds-button-ghost\">확인 완료</button>",
+      "css": ".ds-button-ghost{font-family:Arial,'Noto Sans KR',sans-serif;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:8px 16px;border-radius:8px;font-weight:500;cursor:pointer;transition:all .15s;background:transparent;color:#24352d;border:1px solid transparent;}.ds-button-ghost:hover{background:var(--accent,oklch(.97 0 0))}.ds-button-ghost:focus-visible{outline:2px solid var(--ring,#347553);outline-offset:3px}.ds-button-ghost:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important}}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Bordered shadcn field; title and purpose have separate borderless overrides.",
+      "html": "<input class=\"ds-input\" aria-label=\"회의 검색\" placeholder=\"회의 검색\" />",
+      "css": ".ds-input{font-family:Arial,'Noto Sans KR',sans-serif;font-size:14px;width:100%;height:36px;padding:4px 12px;border:1px solid var(--input,oklch(.922 0 0));border-radius:8px;background:transparent;color:#24352d;caret-color:#315e43;box-shadow:0 1px 2px #0000000d;transition:color .15s,box-shadow .15s}.ds-input::placeholder{color:#68766b}.ds-input:focus-visible{outline:2px solid var(--ring,#347553);outline-offset:3px}.ds-input:disabled{opacity:.5;cursor:not-allowed}@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important}}"
+    },
+    {
+      "name": "Workspace card",
+      "kind": "card",
+      "refersTo": "workspace-card",
+      "description": "Current conversation and assistance panel treatment.",
+      "html": "<section class=\"ds-card\"><h2>대화와 맥락</h2><p>누가 무엇을 말했는지, 흐름을 놓치지 마세요.</p></section>",
+      "css": ".ds-card{font-family:Arial,'Noto Sans KR',sans-serif;font-size:14px;background:var(--card,oklch(1 0 0));color:var(--card-foreground,oklch(.145 0 0));border:1px solid #dce3dc;border-radius:12px;box-shadow:0 2px 6px #20332204;padding:21px 22px 17px}.ds-card h2{font-size:16px;font-weight:650;margin:0}.ds-card p{font-size:12px;line-height:1.8;color:#5e6d62;margin:6px 0 0}@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important}}"
+    },
+    {
+      "name": "Native select",
+      "kind": "input",
+      "refersTo": "native-select",
+      "description": "Browser select used for capture mode and speaker selection.",
+      "html": "<label class=\"ds-select-label\">내 화자 <select class=\"ds-select\"><option>발언을 확인한 뒤 선택</option><option>Speaker A</option></select></label>",
+      "css": ".ds-select-label{font-family:Arial,'Noto Sans KR',sans-serif;font-size:14px;font-size:12px}.ds-select{font-family:Arial,'Noto Sans KR',sans-serif;font-size:14px;font-size:12px;min-height:34px;max-width:100%;padding:5px 28px 5px 9px;border:1px solid #c8d3c9;border-radius:6px;background:#fff;color:#304937}.ds-select:focus-visible{outline:2px solid var(--ring,#347553);outline-offset:3px}.ds-select:disabled{opacity:.5}@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important}}"
+    },
+    {
+      "name": "Workspace tabs",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Visual preview of underline tabs; production uses Radix keyboard behavior.",
+      "html": "<nav class=\"ds-tabs\" aria-label=\"대화 보기\"><button class=\"ds-tab\" aria-current=\"page\">실시간 전사</button><button class=\"ds-tab\">중간 요약</button></nav>",
+      "css": ".ds-tabs{display:flex;height:45px;padding:0 14px;border-bottom:1px solid #e6ebe6}.ds-tab{font-family:Arial,'Noto Sans KR',sans-serif;font-size:14px;font-size:12px;font-weight:500;flex:1;height:44px;padding:12px 9px;border:0;border-bottom:2px solid transparent;background:transparent;color:#58685d;cursor:pointer}.ds-tab[aria-current=page]{color:#255138;border-bottom-color:#3e7251}.ds-tab:focus-visible{outline:2px solid var(--ring,#347553);outline-offset:3px}@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important}}"
+    },
+    {
+      "name": "Switch setting",
+      "kind": "custom",
+      "description": "Visual checked state; production uses Radix Switch.",
+      "html": "<label class=\"ds-setting\"><input class=\"ds-switch\" type=\"checkbox\" role=\"switch\" checked />자동 분석</label>",
+      "css": ".ds-setting{font-family:Arial,'Noto Sans KR',sans-serif;font-size:14px;display:inline-flex;align-items:center;gap:7px;min-height:28px;font-size:11px;color:#536658;cursor:pointer}.ds-switch{appearance:none;position:relative;width:32px;height:18.4px;margin:0;border:1px solid transparent;border-radius:999px;background:var(--input,oklch(.922 0 0));cursor:pointer;transition:background .15s}.ds-switch:checked{background:var(--primary,#315e43)}.ds-switch:before{content:\"\";display:block;width:16px;height:16px;background:var(--background,#fff);border-radius:999px;transition:transform .15s}.ds-switch:checked:before{transform:translateX(14px)}.ds-switch:focus-visible{outline:2px solid var(--ring,#347553);outline-offset:3px}.ds-switch:disabled{opacity:.5;cursor:not-allowed}@media(max-width:760px){.ds-setting{min-height:44px}}@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important}}"
+    },
+    {
+      "name": "Self speaker tag",
+      "kind": "chip",
+      "description": "Small label accompanies the pale self utterance row.",
+      "html": "<span class=\"ds-self\">나</span>",
+      "css": ".ds-self{font-family:Arial,'Noto Sans KR',sans-serif;font-size:14px;font-size:10px;background:#dcebdc;color:#2d653e;padding:0 4px;border-radius:3px}@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important}}"
+    }
+  ],
+  "narrative": {
+    "overview": "The implemented workspace is a compact, muted green and neutral operating surface. White panels, thin dividers and restrained controls support intermittent reading during a Korean meeting. This document records the existing implementation; it does not establish a new brand metaphor.\n\nThe current `coach-*` workspace extends the inherited identity through shadcn components. Legacy `meeting-*` styles remain for older surfaces and differ in spacing, type and radii; they are not the template for new workspace panels. Source of truth: `src/app/globals.css` and `src/components/ui/`.",
+    "keyCharacteristics": [
+      "Muted green actions and selected states.",
+      "Compact labels with generous transcript line height.",
+      "Thin borders and almost imperceptible panel shadows."
+    ],
+    "rules": [],
+    "dos": [
+      "Do reuse the existing shadcn primitives and workspace overrides.",
+      "Do preserve visible labels, speaker identity, evidence links and keyboard focus.",
+      "Do use thin dividers and pale fills to separate dense meeting information."
+    ],
+    "donts": [
+      "Don't treat legacy meeting styles as current workspace tokens.",
+      "Don't imply custom fonts, imagery or a complete dark workspace are implemented.",
+      "Don't use color alone to identify recording, errors or the user's speaker."
+    ]
+  }
+}

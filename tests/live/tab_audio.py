@@ -11,7 +11,10 @@ with sync_playwright() as p:
  page=c.new_page()
  page.add_init_script('window.captureInfo={};navigator.mediaDevices.getUserMedia=async()=>{const ac=new AudioContext();window.silentMicContext=ac;const dest=ac.createMediaStreamDestination();const osc=ac.createOscillator();const gain=ac.createGain();gain.gain.value=0;osc.connect(gain).connect(dest);osc.start();await ac.resume();return dest.stream;};const original=navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);navigator.mediaDevices.getDisplayMedia=async(...args)=>{const s=await original(...args);window.captureInfo={audio:s.getAudioTracks().map(t=>({label:t.label,settings:t.getSettings()})),video:s.getVideoTracks().map(t=>({label:t.label,settings:t.getSettings()}))};return s;};')
  page.goto('http://127.0.0.1:3101/')
- page.get_by_role('checkbox',name='탭 오디오 함께 수집').check()
+ page.get_by_label('전사 방식').select_option('gemini')
+ page.get_by_role('tab',name='참고자료',exact=True).click()
+ page.get_by_role('switch',name='탭 오디오 함께 수집',exact=False).check()
+ page.get_by_role('tab',name='실시간 전사',exact=True).click()
  page.get_by_role('button',name='녹음 시작',exact=True).click()
  try:
   expect(page.get_by_role('button',name='녹음 일시 정지',exact=True)).to_be_visible(timeout=20000)
@@ -24,6 +27,6 @@ with sync_playwright() as p:
   page.get_by_role('button',name='회의 종료 · 초안 만들기',exact=True).click();expect(page.get_by_label('회의록 편집')).to_be_visible(timeout=30000)
   print(json.dumps({'stage':'PASS','actual_tab_capture':True,'silent_microphone':True,'remote_audio_transcribed':True,'sharing_end_handled':True}))
  except Exception as e:
-  print(json.dumps({'stage':'FAIL','error_type':type(e).__name__,'alert':page.locator('.meeting-error').all_text_contents()},ensure_ascii=False),flush=True)
+  print(json.dumps({'stage':'FAIL','error_type':type(e).__name__,'alert':page.locator('.coach-error').all_text_contents()},ensure_ascii=False),flush=True)
   raise
  finally:b.close()

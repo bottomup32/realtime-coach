@@ -6,8 +6,10 @@ function validMeeting(value: unknown): value is Meeting {
   return ["id", "title", "goal", "notes", "context", "startedAt", "summary", "report"].every(k => typeof m[k] === "string")
     && typeof m.confirmed === "boolean" && (m.endedAt === undefined || typeof m.endedAt === "string")
     && ["decisions", "actions", "openQuestions"].every(k => Array.isArray(m[k]) && (m[k] as unknown[]).every(v => typeof v === "string"))
-    && Array.isArray(m.transcript) && m.transcript.every(t => t && typeof t.id === "string" && typeof t.text === "string" && typeof t.at === "string")
-    && Array.isArray(m.cards) && m.cards.every(c => c && typeof c.id === "string" && typeof c.content === "string" && ["QUESTION", "INSIGHT", "ANSWER"].includes(c.type) && Array.isArray(c.evidenceIds) && c.evidenceIds.every((id: unknown) => typeof id === "string"));
+    && Array.isArray(m.transcript) && m.transcript.every(t => t && typeof t.id === "string" && typeof t.text === "string" && typeof t.at === "string" && (t.speakerId === undefined || typeof t.speakerId === "string") && (t.speakerLabel === undefined || typeof t.speakerLabel === "string"))
+    && Array.isArray(m.cards) && m.cards.every(c => c && typeof c.id === "string" && typeof c.content === "string" && ["QUESTION", "INSIGHT", "ANSWER", "COACH"].includes(c.type) && Array.isArray(c.evidenceIds) && c.evidenceIds.every((id: unknown) => typeof id === "string"))
+    && (m.selfSpeakerId === undefined || typeof m.selfSpeakerId === "string")
+    && (m.summaryHistory === undefined || (Array.isArray(m.summaryHistory) && m.summaryHistory.every(h => h && typeof h.id === "string" && typeof h.at === "string" && typeof h.summary === "string" && [h.decisions,h.actions,h.openQuestions].every(a => Array.isArray(a) && a.every((v: unknown) => typeof v === "string")))));
 }
 export function loadMeetings(): Meeting[] {
   const raw = localStorage.getItem(key);

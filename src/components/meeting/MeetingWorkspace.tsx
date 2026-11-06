@@ -2,9 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AnalysisQueue, applyAnalysis, newMeeting, parseAnalysis, reportFor, type Meeting } from "@/lib/coach/model";
+import { AnalysisQueue, applyAnalysis, newMeeting, parseAnalysis, reportFor, type Meeting, type Utterance, personalCards } from "@/lib/coach/model";
 import { loadMeetings, saveMeeting, deleteMeeting } from "@/lib/coach/storage";
 import { authHeaders } from "@/lib/coach/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Mic, Pause, Square, FileText, MessagesSquare, Lightbulb, HelpCircle, Sparkles, Download, Plus, ArrowRight, Check, Volume2 } from "lucide-react";
+import { startDiarizedLive } from "@/lib/coach/diarized-live";
+import { speakerName } from "@/lib/coach/speakers";
 import { startLive } from "@/lib/coach/live";
 
 export function MeetingWorkspace({ showLibrary = false }: { showLibrary?: boolean }) {
@@ -17,6 +25,13 @@ export function MeetingWorkspace({ showLibrary = false }: { showLibrary?: boolea
   const [manual, setManual] = useState("");
   const [query, setQuery] = useState("");
   const [quiet, setQuiet] = useState(false);
+  const [diarizationReady, setDiarizationReady] = useState<boolean | null>(null);
+  const [captureMode, setCaptureMode] = useState("diarized");
+  const [manualSpeaker, setManualSpeaker] = useState("manual-a");
+  const [partial, setPartial] = useState("");
+  const [helpFilter, setHelpFilter] = useState("all");
+  const [mobileHelp, setMobileHelp] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState("transcript");
   const [tabAudio, setTabAudio] = useState(false);
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -54,13 +69,13 @@ export function MeetingWorkspace({ showLibrary = false }: { showLibrary?: boolea
       const transcript = snapshot.transcript.slice(-60).map(t => ({ ...t, text: t.text.slice(0, 4000) }));
       const response = await fetch("/api/coach/analyze", { method: "POST", headers, signal: controller.signal, body: JSON.stringify({
         goal: snapshot.goal.slice(0, 2000), notes: snapshot.notes.slice(-6000), context: snapshot.context.slice(0, 6000),
-        summary: JSON.stringify({ summary: snapshot.summary, decisions: snapshot.decisions, actions: snapshot.actions, openQuestions: snapshot.openQuestions, recentCards: snapshot.cards.slice(-5).map(c => c.content) }).slice(0, 10000), transcript,
+        summary: JSON.stringify({ summary: snapshot.summary, decisions: snapshot.decisions, actions: snapshot.actions, openQuestions: snapshot.openQuestions, recentCards: snapshot.cards.slice(-5).map(c => c.content) }).slice(0, 10000), selfSpeakerId: snapshot.selfSpeakerId, transcript,
       }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "분석에 실패했습니다.");
       const result = parseAnalysis(data.analysis, new Set(transcript.map(t => t.id)));
       const latest = current.current;
-      if (alive.current && latest?.id === snapshot.id) { update(applyAnalysis(latest, result)); setLatency(data.latencyMs); setError(""); }
+      if (alive.current && latest?.id === snapshot.id) { update(applyAnalysis(latest, personalCards(result, latest.transcript, latest.selfSpeakerId === snapshot.selfSpeakerId ? latest.selfSpeakerId : undefined))); setLatency(data.latencyMs); setError(""); }
     } catch (e) {
       analysisFailed.current = true;
       if (alive.current) { setError(e instanceof Error && e.name !== "AbortError" ? e.message : "분석 시간이 초과됐습니다. 전사와 메모는 보존됩니다."); aiEnabled.current = false; setAutoAI(false); }
@@ -69,6 +84,8 @@ export function MeetingWorkspace({ showLibrary = false }: { showLibrary?: boolea
 
   useEffect(() => {
     alive.current = true;
+    const configController = new AbortController();
+    void fetch("/api/coach/config", { cache: "no-store", signal: configController.signal }).then(r => r.json()).then(config => { if (alive.current) setDiarizationReady(config.diarizationReady === true); }).catch(() => { if (alive.current) setDiarizationReady(false); });
     queueMicrotask(() => {
       if (!alive.current) return;
       try {
@@ -79,7 +96,7 @@ export function MeetingWorkspace({ showLibrary = false }: { showLibrary?: boolea
     const flush = () => { if (current.current) { try { saveMeeting(current.current); } catch { /* keep current browser state */ } } };
     window.addEventListener("pagehide", flush);
     return () => {
-      alive.current = false; requestRef.current?.abort();
+      alive.current = false; configController.abort(); requestRef.current?.abort();
       if (saveTimer.current) clearTimeout(saveTimer.current);
       if (analyzeTimer.current) clearTimeout(analyzeTimer.current);
       void stopRef.current?.(); flush(); window.removeEventListener("pagehide", flush);
@@ -87,22 +104,29 @@ export function MeetingWorkspace({ showLibrary = false }: { showLibrary?: boolea
   }, []);
 
   const requestAnalysis = () => { void queue.request().catch(() => setError("분석을 다시 시도해 주세요.")); };
-  const appendText = (text: string) => {
+  const appendUtterances = (items: Utterance[]) => {
     const m = current.current;
-    if (!m || m.endedAt || !text.trim()) return;
-    update({ ...m, transcript: [...m.transcript, { id: crypto.randomUUID(), text: text.trim(), at: new Date().toISOString() }] });
-    // Throttle, do not debounce indefinitely while people keep talking.
+    if (!m || m.endedAt || !items.length) return;
+    update({ ...m, transcript: [...m.transcript, ...items] });
     if (aiEnabled.current && !analyzeTimer.current) analyzeTimer.current = setTimeout(() => { analyzeTimer.current = null; requestAnalysis(); }, 1000);
+  };
+  const appendText = (text: string, speakerId?: string, speakerLabel?: string) => {
+    if (text.trim()) appendUtterances([{ id: crypto.randomUUID(), text: text.trim(), at: new Date().toISOString(), speakerId, speakerLabel }]);
   };
   const begin = async () => {
     setConnecting(true); setError(""); const generation = ++captureGeneration.current;
     try {
-      const stop = await startLive({ tabAudio, onText: appendText, onStatus: text => {
+      const onStatus = (text: string) => {
         if (!alive.current || generation !== captureGeneration.current) return;
         setStatus(text); if (text !== "녹음 중") setRecording(false);
-      } });
+      };
+      const stop = captureMode === "diarized"
+        ? await startDiarizedLive({ onUtterances: appendUtterances, onPartial: setPartial, onStatus })
+        : await startLive({ tabAudio, onText: text => appendText(text), onStatus });
       if (!alive.current || generation !== captureGeneration.current) { await stop(); return; }
-      stopRef.current = stop; setRecording(true); aiEnabled.current = true; setAutoAI(true);
+      stopRef.current = stop; setRecording(true);
+      if (captureMode === "diarized" && current.current) update({ ...current.current, selfSpeakerId: undefined });
+      aiEnabled.current = true; setAutoAI(true);
     } catch (e) { setError(e instanceof Error ? e.message : "녹음에 실패했습니다."); setStatus("녹음 대기"); }
     finally { if (alive.current) setConnecting(false); }
   };
@@ -131,38 +155,44 @@ export function MeetingWorkspace({ showLibrary = false }: { showLibrary?: boolea
   };
   const download = () => {
     if (!meeting) return;
-    const transcript = meeting.transcript.map(t => `- [${t.at}] ${t.text}`).join("\n");
+    const transcript = meeting.transcript.map(t => `- [${t.at}] ${speakerName(t)}: ${t.text}`).join("\n");
     const blob = new Blob([`${meeting.report || reportFor(meeting)}\n## 전사\n${transcript}\n`], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `meeting-${meeting.id}.md`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   const refreshLibrary = () => { persist(); try { setLibrary(loadMeetings()); } catch { setError("기록을 불러올 수 없습니다."); } };
   const field = (key: "title" | "goal" | "notes" | "context" | "report", value: string) => { if (current.current) update({ ...current.current, [key]: value, confirmed: false }); };
 
-  if (!meeting) return <main className="meeting-shell"><h1>회의 코파일럿</h1><p role="status">{error || "기록을 불러오는 중…"}</p></main>;
-  return <main className="meeting-shell">
-    <header className="meeting-header"><div><span className="eyebrow">MEETING COPILOT</span><h1>회의에 집중하세요.<br />맥락은 이어집니다.</h1></div><nav><Link href="/">회의</Link><Link href="/meetings" onClick={refreshLibrary}>내 기록</Link><Link href="/history">기존 클라우드 기록</Link></nav></header>
-    <div className="meeting-toolbar"><span role="status">{saveStatus}</span><span>{status}</span><button disabled={recording || connecting || busy} onClick={() => { if (!persist()) return; update(newMeeting()); setStatus("녹음 대기"); setError(""); }}>새 회의</button><button onClick={download}>Markdown 내보내기</button></div>
-    <p className="meeting-caption">메모와 기록은 이 기기의 브라우저에 저장됩니다. 다른 기기와 동기화되지 않으며 브라우저 데이터 삭제 시 사라질 수 있습니다.</p>
-    {error && <div role="alert" className="meeting-error">{error}</div>}
-    {showLibrary && <section className="meeting-panel"><h2>내 회의 기록</h2><input aria-label="회의 검색" placeholder="제목·메모·회의록 검색" value={query} onChange={e => setQuery(e.target.value)} /><div className="meeting-library">{library.filter(m => `${m.title} ${m.notes} ${m.report}`.toLowerCase().includes(query.toLowerCase())).map(m => <article key={m.id}><button disabled={recording || connecting || busy} onClick={() => openMeeting(m)}><strong>{m.title}</strong><small>{new Date(m.startedAt).toLocaleString("ko-KR")} · {m.endedAt ? "종료" : "진행 중"}</small></button><button disabled={recording || connecting || busy || m.id === meeting.id} onClick={() => { if (confirm("이 브라우저에서 회의를 삭제할까요?")) { try { deleteMeeting(m.id); refreshLibrary(); } catch { setError("삭제하지 못했습니다."); } } }}>삭제</button><button disabled={!!meeting.endedAt} onClick={() => field("context", `${meeting.context}\n[이전 노트: ${m.title} / ${m.startedAt}]\n${m.report || reportFor(m)}`.slice(-12000))}>이전 맥락으로 추가</button></article>)}{!library.length && <p>저장한 회의가 없습니다.</p>}</div></section>}
-    <div className="meeting-grid"><section className="meeting-panel">
-      <label>회의 제목<input value={meeting.title} maxLength={200} onChange={e => field("title", e.target.value)} /></label>
-      <label>오늘 결정할 일<input placeholder="예: 다음 출시 범위와 담당자를 정합니다" value={meeting.goal} maxLength={2000} onChange={e => field("goal", e.target.value)} /></label>
-      <label>내 메모<textarea className="meeting-notes" placeholder="생각과 중요한 내용을 자유롭게 적으세요. AI가 메모를 덮어쓰지 않습니다." value={meeting.notes} onChange={e => field("notes", e.target.value)} /></label>
-      <details><summary>이전 미팅 노트 · 참고자료</summary><textarea aria-label="참고자료" placeholder="이전 결정과 관련 문서를 붙여넣으세요. MCP 직접 연결은 준비 중입니다." maxLength={12000} value={meeting.context} onChange={e => field("context", e.target.value)} /><p className="meeting-caption">참고자료는 사용자 입력이며 외부 사실 검증을 대신하지 않습니다.</p></details>
-    </section><aside className="meeting-panel"><div className="meeting-section-heading"><h2>현재 회의 요약</h2><span aria-live="polite">{busy ? "분석 중…" : latency !== null ? `최근 서버 분석 ${(latency / 1000).toFixed(1)}초` : "분석 대기"}</span></div>
-      <p>{meeting.summary || "발언을 추가한 뒤 AI 분석을 요청하면 핵심 논의가 여기에 정리됩니다."}</p>
-      {([["결정", meeting.decisions], ["할 일", meeting.actions], ["열린 질문", meeting.openQuestions]] as const).map(([title, items]) => <div key={title} className="meeting-state"><h3>{title}</h3>{items.length ? <ul>{items.map((x, i) => <li key={i}>{x}</li>)}</ul> : <p className="meeting-caption">아직 확인된 내용이 없습니다.</p>}</div>)}
-      <div className="meeting-actions"><button disabled={connecting || !!meeting.endedAt} onClick={requestAnalysis}>요약 · 코칭 요청</button><label className="meeting-check"><input type="checkbox" checked={autoAI} disabled={!!meeting.endedAt} onChange={e => { aiEnabled.current = e.target.checked; setAutoAI(e.target.checked); }} />새 발언 자동 분석</label></div>
-      <div className="meeting-section-heading"><h2>지금 필요한 도움</h2><label className="meeting-check"><input type="checkbox" checked={quiet} onChange={e => setQuiet(e.target.checked)} />조용히</label></div>
-      {quiet ? <p>도움을 잠시 숨겼습니다. 전사와 요약은 계속됩니다.</p> : meeting.cards.filter(c => !c.dismissed).slice(-3).reverse().map(c => <article className="meeting-coaching" key={c.id}><strong>{c.type === "QUESTION" ? "확인할 점" : c.type === "ANSWER" ? "관련 정보" : "놓치지 않을 점"}</strong><p>{c.content}</p><details><summary>발언 근거 보기</summary>{c.evidenceIds.map(id => <p key={id}>{meeting.transcript.find(t => t.id === id)?.text || "이전 발언"}</p>)}</details><button onClick={() => update({ ...meeting, cards: meeting.cards.map(item => item.id === c.id ? { ...item, dismissed: true } : item) })}>확인 완료</button></article>)}
-      {!quiet && !meeting.cards.some(c => !c.dismissed) && <p className="meeting-caption">필요한 순간에만 확인 질문과 인사이트를 제안합니다.</p>}
-    </aside></div>
-    <section className="meeting-panel"><div className="meeting-section-heading"><h2>회의 음성 · 전사</h2><div className="meeting-actions"><label className="meeting-check"><input type="checkbox" disabled={recording || connecting} checked={tabAudio} onChange={e => setTabAudio(e.target.checked)} />탭 오디오 함께 수집</label><button className="meeting-primary" disabled={connecting || !!meeting.endedAt} onClick={recording ? pause : begin}>{connecting ? "처리 중…" : recording ? "녹음 일시 정지" : "녹음 시작"}</button><button disabled={connecting || !!meeting.endedAt} onClick={finish}>회의 종료 · 초안 만들기</button></div></div>
-      <p className="meeting-caption">실시간 음성·AI 분석은 서버의 Gemini 모델 설정과 Supabase 인증이 필요합니다. 연결 종료 시 기록을 보존하고 재시작을 안내합니다. 자동 복구는 아직 지원하지 않습니다.</p>
-      {!meeting.endedAt && <form className="meeting-manual" onSubmit={e => { e.preventDefault(); appendText(manual); setManual(""); }}><input aria-label="수동 발언" value={manual} maxLength={4000} onChange={e => setManual(e.target.value)} placeholder="음성 설정 없이 발언을 직접 입력할 수 있습니다" /><button disabled={!manual.trim()}>발언 추가</button></form>}
-      <details><summary>전사 {meeting.transcript.length}개 보기</summary><div className="meeting-transcript">{meeting.transcript.map(t => <p key={t.id}><time>{new Date(t.at).toLocaleTimeString("ko-KR")}</time>{t.text}</p>)}</div></details>
-    </section>
-    {meeting.endedAt && <section className="meeting-panel"><div className="meeting-section-heading"><h2>회의록 {meeting.confirmed ? "· 검토 완료" : "초안 · 검토 필요"}</h2><button onClick={() => update({ ...meeting, confirmed: true })}>검토 완료로 표시</button></div><textarea aria-label="회의록 편집" className="meeting-report" value={meeting.report} onChange={e => field("report", e.target.value)} /><p className="meeting-caption">원본 메모와 전사는 그대로 보존됩니다. 결정·담당자·기한을 확인한 뒤 확정해 주세요.</p></section>}
+  if (!meeting) return <main className="coach-app"><p role="status">{error || "회의 기록을 불러오고 있습니다…"}</p></main>;
+  const speakers = Array.from(new Map(meeting.transcript.filter(t => t.speakerId).map(t => [t.speakerId!, { id: t.speakerId!, label: speakerName(t) }])).values()).map((person, _, all) => { const duplicates = all.filter(p => p.label === person.label); return { ...person, label: duplicates.length > 1 ? `${person.label} · 연결 ${duplicates.findIndex(p => p.id === person.id) + 1}` : person.label }; });
+  const activeCards = meeting.cards.filter(c => !c.dismissed && (c.type !== "COACH" || (c.targetSpeakerId === meeting.selfSpeakerId && c.evidenceIds.every(id => meeting.transcript.some(t => t.id === id && t.speakerId === meeting.selfSpeakerId)))) && (helpFilter === "all" || c.type === helpFilter));
+  const selectedSpeaker = speakers.find(s => s.id === meeting.selfSpeakerId);
+  const cardMeta = { COACH: { label: "내 발언 코칭", icon: Sparkles }, QUESTION: { label: "추천 질문", icon: HelpCircle }, INSIGHT: { label: "인사이트", icon: Lightbulb }, ANSWER: { label: "관련 정보", icon: FileText } };
+  return <main className="coach-app">
+    <header className="coach-header"><Link className="coach-brand" href="/"><MessagesSquare size={21} aria-hidden="true" /><span>회의 코치</span></Link><nav aria-label="주 메뉴"><Link aria-current={!showLibrary ? "page" : undefined} href="/">실시간 회의</Link><Link aria-current={showLibrary ? "page" : undefined} href="/meetings" onClick={refreshLibrary}>내 기록</Link></nav><span className="coach-save" role="status">{saveStatus}</span></header>
+    <section className="coach-heading"><div><label className="sr-only" htmlFor="meeting-title">회의 제목</label><Input id="meeting-title" className="coach-title" value={meeting.title} maxLength={200} onChange={e => field("title", e.target.value)} /><label className="sr-only" htmlFor="meeting-goal">오늘 결정할 일</label><Input id="meeting-goal" className="coach-goal" placeholder="오늘 결정할 일을 적어두세요" value={meeting.goal} maxLength={2000} onChange={e => field("goal", e.target.value)} /></div><div className="coach-heading-actions"><Button variant="outline" onClick={download}><Download size={15} />내보내기</Button><Button variant="outline" disabled={recording || connecting || busy} onClick={() => { if (!persist()) return; update(newMeeting()); setStatus("녹음 대기"); setError(""); }}><Plus size={15} />새 회의</Button></div></section>
+    <section className="coach-recordbar" aria-label="녹음 제어"><div className="coach-record-status"><span className={recording ? "coach-dot is-live" : "coach-dot"} /><strong aria-live="polite">{status}</strong><span className="coach-record-description">{captureMode === "diarized" ? "대면 회의 · 화자 분리" : "Gemini · 화자 미분리"}</span></div><div className="coach-record-actions"><label className="sr-only" htmlFor="capture-mode">전사 방식</label><select id="capture-mode" className="coach-select" disabled={recording || connecting} value={captureMode} onChange={e => setCaptureMode(e.target.value)}><option value="diarized">대면 · 화자 자동 구분</option><option value="gemini">Gemini · 기본 전사</option></select><Button disabled={connecting || !!meeting.endedAt} onClick={recording ? pause : begin}>{recording ? <Pause size={15} /> : <Mic size={15} />}{connecting ? "연결 처리 중…" : recording ? "녹음 일시 정지" : "녹음 시작"}</Button><Button variant="outline" disabled={connecting || !!meeting.endedAt} onClick={finish}><Square size={13} />회의 종료 · 초안 만들기</Button></div></section>
+    {error && <div role="alert" className="coach-error">{error}</div>}
+    <div className="coach-scope"><span>{captureMode === "diarized" && diarizationReady === false && <strong>화자 분리 서비스 연결이 필요합니다. </strong>}{captureMode === "diarized" ? "자동 화자는 번호입니다. 발언을 확인하고 아래에서 내 화자를 지정하세요." : "Gemini 기본 전사에는 자동 화자 구분이 없습니다."}</span><span>기록은 이 브라우저에 저장됩니다.</span></div>
+    {showLibrary && <section className="coach-library" aria-label="저장된 회의"><h2>내 회의 기록</h2><Input aria-label="회의 검색" placeholder="제목·메모·회의록 검색" value={query} onChange={e => setQuery(e.target.value)} />{library.filter(m => `${m.title} ${m.notes} ${m.report}`.toLowerCase().includes(query.toLowerCase())).map(m => <div className="coach-library-row" key={m.id}><Button variant="ghost" disabled={recording || connecting || busy} onClick={() => openMeeting(m)}>{m.title} <span>{new Date(m.startedAt).toLocaleDateString("ko-KR")}</span></Button><Button variant="outline" disabled={!!meeting.endedAt} onClick={() => field("context", `${meeting.context}\n[이전 노트: ${m.title} / ${m.startedAt}]\n${m.report || reportFor(m)}`.slice(-12000))}>맥락에 추가</Button><Button variant="ghost" disabled={recording || connecting || busy || m.id === meeting.id} onClick={() => { if (confirm("이 브라우저에서 회의를 삭제할까요?")) { try { deleteMeeting(m.id); refreshLibrary(); } catch { setError("삭제하지 못했습니다."); } } }}>삭제</Button></div>)}{!library.length && <p className="coach-muted">저장한 회의가 없습니다. 회의를 마치면 여기서 이어볼 수 있습니다.</p>}</section>}
+    <div className="coach-mobile-actions"><Tabs value={mobileHelp ? "help" : workspaceTab === "summary" ? "summary" : "conversation"} onValueChange={value => { setMobileHelp(value === "help"); if (value !== "help") setWorkspaceTab(value === "summary" ? "summary" : "transcript"); }}><TabsList aria-label="회의 화면 전환"><TabsTrigger value="conversation">대화</TabsTrigger><TabsTrigger value="help">도움 {meeting.cards.filter(c => !c.dismissed).length}</TabsTrigger><TabsTrigger value="summary">요약</TabsTrigger></TabsList></Tabs></div>
+    <div className="coach-workspace" data-mobile-help={mobileHelp}>
+      <Card className="coach-conversation"><CardHeader className="coach-panel-heading"><div><CardTitle>대화와 맥락</CardTitle><p className="coach-muted">누가 무엇을 말했는지, 흐름을 놓치지 마세요.</p></div><span className="coach-count">발언 {meeting.transcript.length}</span></CardHeader><CardContent className="coach-panel-content">
+        <div className="coach-speaker-picker"><label htmlFor="self-speaker">내 화자</label><select id="self-speaker" className="coach-select" value={meeting.selfSpeakerId || ""} onChange={e => update({ ...meeting, selfSpeakerId: e.target.value || undefined })}><option value="">발언을 확인한 뒤 선택</option>{speakers.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select>{selectedSpeaker ? <span className="coach-me-label"><Check size={13} />{selectedSpeaker.label}의 발언을 코칭합니다</span> : <span className="coach-muted">개인 코칭은 선택 후 시작됩니다</span>}</div>
+        <Tabs value={workspaceTab} onValueChange={setWorkspaceTab}><TabsList className="coach-main-tabs"><TabsTrigger value="transcript">실시간 전사</TabsTrigger><TabsTrigger value="summary">중간 요약</TabsTrigger><TabsTrigger value="notes">내 메모</TabsTrigger><TabsTrigger value="context">참고자료</TabsTrigger></TabsList>
+          <TabsContent value="transcript"><div className="coach-transcript" role="log" aria-label="화자별 대화" aria-live="off">{!meeting.transcript.length && !partial && <div className="coach-empty"><Volume2 size={28} aria-hidden="true" /><h3>대화가 시작되면 여기에 모입니다</h3><p>녹음을 시작하면 발언과 화자가 표시됩니다.<br />Speaker A·B를 확인하고 내 화자를 선택하세요.</p></div>}{meeting.transcript.map(t => <article className="coach-utterance" key={t.id} id={`utterance-${t.id}`} data-self={!!meeting.selfSpeakerId && t.speakerId === meeting.selfSpeakerId}><div className="coach-utterance-meta"><span className="coach-avatar" aria-hidden="true">{speakerName(t).replace("Speaker ", "").slice(0, 1)}</span><strong>{speakerName(t)}</strong>{meeting.selfSpeakerId && t.speakerId === meeting.selfSpeakerId && <span className="coach-me-tag">나</span>}<time dateTime={t.at}>{new Date(t.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</time></div><p>{t.text}</p><label className="coach-correct-speaker">화자 수정<select aria-label={`화자 수정 ${t.id}`} value={t.speakerId || ""} onChange={e => { const person = speakers.find(s => s.id === e.target.value); update({ ...meeting, transcript: meeting.transcript.map(item => item.id === t.id ? { ...item, speakerId: person?.id, speakerLabel: person?.label } : item) }); }}><option value="">화자 미확인</option>{speakers.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></label></article>)}{partial && <div className="coach-partial"><span>듣는 중 · 임시 전사</span><p>{partial}</p></div>}</div>
+            {!meeting.endedAt && <form className="coach-manual" onSubmit={e => { e.preventDefault(); appendText(manual, manualSpeaker, `Speaker ${manualSpeaker.slice(-1).toUpperCase()}`); setManual(""); }}><label className="sr-only" htmlFor="manual-speaker">수동 발언 화자</label><select id="manual-speaker" className="coach-select" value={manualSpeaker} onChange={e => setManualSpeaker(e.target.value)}><option value="manual-a">화자 A</option><option value="manual-b">화자 B</option><option value="manual-c">화자 C</option></select><Input aria-label="수동 발언" value={manual} maxLength={4000} onChange={e => setManual(e.target.value)} placeholder="발언을 직접 입력할 수도 있습니다" /><Button variant="outline" disabled={!manual.trim()} aria-label="발언 추가"><ArrowRight size={16} /></Button></form>}
+          </TabsContent>
+          <TabsContent value="summary"><div className="coach-summary-current"><h3>현재까지의 논의</h3><p>{meeting.summary || "대화를 분석하면 현재 논의와 합의된 내용을 정리합니다."}</p>{([["결정 사항", meeting.decisions], ["할 일", meeting.actions], ["열린 질문", meeting.openQuestions]] as const).map(([title, items]) => <section key={title}><h4>{title}</h4>{items.length ? <ul>{items.map((item, i) => <li key={i}>{item}</li>)}</ul> : <p className="coach-muted">아직 확인된 내용이 없습니다.</p>}</section>)}</div><div className="coach-summary-history"><h3>요약 타임라인</h3>{(meeting.summaryHistory || []).slice().reverse().map(item => <details key={item.id}><summary>{new Date(item.at).toLocaleTimeString("ko-KR")} 요약</summary><p>{item.summary}</p></details>)}{!meeting.summaryHistory?.length && <p className="coach-muted">분석이 진행되면 이전 요약도 이곳에 남습니다.</p>}</div></TabsContent>
+          <TabsContent value="notes"><label className="coach-field-label" htmlFor="personal-notes">내 메모</label><textarea id="personal-notes" className="coach-textarea" placeholder="중요한 내용과 내 생각을 적으세요. AI가 원문을 덮어쓰지 않습니다." value={meeting.notes} onChange={e => field("notes", e.target.value)} /><p className="coach-muted">메모와 AI 회의록은 따로 보존합니다.</p></TabsContent>
+          <TabsContent value="context"><label className="coach-field-label" htmlFor="meeting-context">이전 미팅 노트 · 참고자료</label><textarea id="meeting-context" className="coach-textarea" maxLength={12000} value={meeting.context} placeholder="이전 합의나 프로젝트 자료를 붙여넣으세요." onChange={e => field("context", e.target.value)} /><p className="coach-muted">직접 입력한 참고자료입니다. MCP 자동 검색은 아직 연결되지 않았습니다.</p>{captureMode === "gemini" && <label className="coach-inline-setting"><Switch checked={tabAudio} disabled={recording || connecting} onCheckedChange={setTabAudio} />탭 오디오 함께 수집 (화자 미분리)</label>}</TabsContent>
+        </Tabs>
+      </CardContent></Card>
+      <Card className="coach-assistance"><CardHeader className="coach-panel-heading"><div><CardTitle>지금 필요한 도움</CardTitle><p className="coach-muted">내 발언은 더 명확하게, 회의는 더 깊게.</p></div><label className="coach-inline-setting"><Switch checked={quiet} onCheckedChange={setQuiet} aria-label="조용히 모드" /><span>조용히</span></label></CardHeader><CardContent className="coach-panel-content">
+        <Tabs value={helpFilter} onValueChange={setHelpFilter}><TabsList className="coach-help-tabs"><TabsTrigger value="all">전체</TabsTrigger><TabsTrigger value="COACH">내 코칭</TabsTrigger><TabsTrigger value="QUESTION">질문</TabsTrigger><TabsTrigger value="INSIGHT">인사이트</TabsTrigger></TabsList></Tabs>
+        <div className="coach-help-feed">{quiet ? <div className="coach-empty"><h3>도움을 잠시 숨겼습니다</h3><p>전사와 요약은 계속됩니다.</p></div> : !activeCards.length ? <div className="coach-empty"><Sparkles size={26} aria-hidden="true" /><h3>{helpFilter === "COACH" && !selectedSpeaker ? "먼저 내 화자를 선택하세요" : "필요한 순간에만 제안합니다"}</h3><p>{helpFilter === "COACH" ? "내 발언에 근거한 구체적인 표현·논리 코칭을 제공합니다." : "추천 질문, 놓친 연결점과 인사이트가 여기에 나타납니다."}</p></div> : activeCards.slice().reverse().map(c => { const meta = cardMeta[c.type]; const Icon = meta.icon; return <article key={c.id} className="coach-help-item" data-type={c.type}><div className="coach-help-meta"><span><Icon size={15} />{meta.label}</span>{c.type === "COACH" && <span>{selectedSpeaker?.label || "이전 내 화자"}</span>}</div><p>{c.content}</p><details><summary>발언 근거 {c.evidenceIds.length}개</summary>{c.evidenceIds.map(id => { const t = meeting.transcript.find(item => item.id === id); return <a key={id} href={`#utterance-${id}`} onClick={() => { setWorkspaceTab("transcript"); setMobileHelp(false); }}><strong>{t ? speakerName(t) : "이전 발언"}</strong>{t?.text || "근거 발언을 확인하세요"}</a>; })}</details><Button size="sm" variant="ghost" onClick={() => update({ ...meeting, cards: meeting.cards.map(item => item.id === c.id ? { ...item, dismissed: true } : item) })}><Check size={13} />확인 완료</Button></article>; })}</div>
+        <div className="coach-analysis-controls"><div><span aria-live="polite">{busy ? "맥락을 분석하고 있습니다…" : latency !== null ? `최근 서버 분석 ${(latency / 1000).toFixed(1)}초` : "분석 대기"}</span><label className="coach-inline-setting"><Switch checked={autoAI} disabled={!!meeting.endedAt} onCheckedChange={value => { aiEnabled.current = value; setAutoAI(value); }} aria-label="새 발언 자동 분석" />자동 분석</label></div><Button variant="outline" disabled={connecting || !!meeting.endedAt} onClick={requestAnalysis}>요약 · 코칭 요청</Button></div>
+      </CardContent></Card>
+    </div>
+    {meeting.endedAt && <Card className="coach-report"><CardHeader className="coach-panel-heading"><CardTitle>회의록 {meeting.confirmed ? "· 검토 완료" : "초안 · 검토 필요"}</CardTitle><Button variant="outline" onClick={() => update({ ...meeting, confirmed: true })}>검토 완료로 표시</Button></CardHeader><CardContent><textarea aria-label="회의록 편집" className="coach-textarea coach-report-editor" value={meeting.report} onChange={e => field("report", e.target.value)} /><p className="coach-muted">결정·담당자·기한을 확인한 뒤 확정해 주세요. 원본 메모와 전사는 그대로 보존됩니다.</p></CardContent></Card>}
   </main>;
 }
